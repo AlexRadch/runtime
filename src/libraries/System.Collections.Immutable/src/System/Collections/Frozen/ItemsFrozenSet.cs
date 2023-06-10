@@ -32,6 +32,8 @@ namespace System.Collections.Frozen
         /// <inheritdoc />
         private protected sealed override T[] ItemsCore => _items;
 
+        private protected sealed override T IndexCore(int index) => _items[index];
+
         /// <inheritdoc />
         private protected sealed override Enumerator GetEnumeratorCore() => new Enumerator(_items);
 

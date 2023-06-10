@@ -42,6 +42,8 @@ namespace System.Collections.Frozen
         /// <inheritdoc />
         private protected override string[] ItemsCore => _items;
 
+        private protected override string IndexCore(int index) => _items[index];
+
         /// <inheritdoc />
         private protected override Enumerator GetEnumeratorCore() => new Enumerator(_items);
 

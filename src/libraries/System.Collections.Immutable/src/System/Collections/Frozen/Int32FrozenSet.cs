@@ -28,6 +28,8 @@ namespace System.Collections.Frozen
         /// <inheritdoc />
         private protected override int[] ItemsCore => _hashTable.HashCodes;
 
+        private protected override int IndexCore(int index) => _hashTable.HashCodes[index];
+
         /// <inheritdoc />
         private protected override Enumerator GetEnumeratorCore() => new Enumerator(_hashTable.HashCodes);
 

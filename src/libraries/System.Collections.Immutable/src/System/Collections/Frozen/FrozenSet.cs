@@ -95,6 +95,125 @@ namespace System.Collections.Frozen
             // No special-cases apply. Use the default frozen set.
             return new DefaultFrozenSet<T>(uniqueValues, comparer);
         }
+
+        /// <summary>Creates a <see cref="FrozenSet{T}"/> with the specified values.</summary>
+        /// <param name="source">The values to use to populate the set.</param>
+        /// <param name="comparer">The comparer implementation to use to compare values for equality. If null, <see cref="EqualityComparer{T}.Default"/> is used.</param>
+        /// <param name="ordered"></param>
+        /// <typeparam name="T">The type of the values in the set.</typeparam>
+        /// <remarks>If the same key appears multiple times in the input, the latter one in the sequence takes precedence.</remarks>
+        /// <returns>A frozen set.</returns>
+        public static FrozenSet<T> ToFrozenSet<T>(this IEnumerable<T> source, bool ordered, IEqualityComparer<T>? comparer = null)
+        {
+            if (!ordered)
+                return ToFrozenSet(source, comparer);
+
+            ThrowHelper.ThrowIfNull(source);
+            comparer ??= EqualityComparer<T>.Default;
+
+            // If the source is already frozen with the same comparer, it can simply be returned.
+            if (source is FrozenSet<T> existing &&
+                existing.Comparer.Equals(comparer))
+            {
+                return existing;
+            }
+
+
+            // Ensure we have a HashSet<,> using the specified comparer such that all values
+            // are non-null and unique according to that comparer.
+            if (source is not HashSet<T> uniqueValues ||
+                (uniqueValues.Count != 0 && !uniqueValues.Comparer.Equals(comparer)))
+            {
+                uniqueValues = new HashSet<T>(source, comparer);
+            }
+
+            // If the input was empty, simply return the empty frozen set singleton. The comparer is ignored.
+            if (uniqueValues.Count == 0)
+            {
+                return FrozenSet<T>.Empty;
+            }
+
+
+            throw new NotImplementedException();
+        }
+
+        /// <summary>Creates a <see cref="FrozenSet{T}"/> with the specified values.</summary>
+        /// <param name="source">The values to use to populate the set.</param>
+        /// <param name="comparer">The comparer implementation to use to compare values for equality. If null, <see cref="EqualityComparer{T}.Default"/> is used.</param>
+        /// <param name="orderComparer">The comparer implementation to use to order values. If null, <see cref="Comparer{T}.Default"/> is used.</param>
+        /// <typeparam name="T">The type of the values in the set.</typeparam>
+        /// <remarks>If the same key appears multiple times in the input, the latter one in the sequence takes precedence.</remarks>
+        /// <returns>A frozen set.</returns>
+        public static FrozenSet<T> ToFrozenSet<T>(this IEnumerable<T> source, IEqualityComparer<T>? comparer = null, IComparer<T>? orderComparer = null)
+        {
+            ThrowHelper.ThrowIfNull(source);
+            comparer ??= EqualityComparer<T>.Default;
+            orderComparer ??= Comparer<T>.Default;
+
+            // If the source is already frozen with the same comparer, it can simply be returned.
+            if (source is FrozenSet<T> existing &&
+                existing.Comparer.Equals(comparer) && orderComparer.Equals(existing.OrderComparer))
+            {
+                return existing;
+            }
+
+            // Ensure we have a HashSet<,> using the specified comparer such that all values
+            // are non-null and unique according to that comparer.
+            if (source is not HashSet<T> uniqueValues ||
+                (uniqueValues.Count != 0 && !uniqueValues.Comparer.Equals(comparer)))
+            {
+                uniqueValues = new HashSet<T>(source, comparer);
+            }
+
+            // If the input was empty, simply return the empty frozen set singleton. The comparer is ignored.
+            if (uniqueValues.Count == 0)
+            {
+                return FrozenSet<T>.Empty;
+            }
+
+            if (typeof(T).IsValueType)
+            {
+                // Optimize for value types when the default comparer is being used. In such a case, the implementation
+                // may use EqualityComparer<T>.Default.Equals/GetHashCode directly, with generic specialization enabling
+                // the Equals/GetHashCode methods to be devirtualized and possibly inlined.
+                if (ReferenceEquals(comparer, EqualityComparer<T>.Default) && ReferenceEquals(orderComparer, Comparer<T>.Default))
+                {
+                    // In the specific case of Int32 keys, we can optimize further to reduce memory consumption by using
+                    // the underlying FrozenHashtable's Int32 index as the values themselves, avoiding the need to store the
+                    // same values yet again.
+                    return typeof(T) == typeof(int) ?
+                        (FrozenSet<T>)(object)new Int32FrozenSet((HashSet<int>)(object)uniqueValues) :
+                        new ValueTypeDefaultComparerFrozenSet<T>(uniqueValues);
+                }
+            }
+            else if (typeof(T) == typeof(string))
+            {
+                // Null is rare as a value in the set and we don't optimize for it.  This enables the ordinal string
+                // implementation to fast-path out on null inputs rather than having to accomodate null inputs.
+                if (!uniqueValues.Contains(default!))
+                {
+                    // If the value is a string and the comparer is known to provide ordinal (case-sensitive or case-insensitive) semantics,
+                    // we can use an implementation that's able to examine and optimize based on lengths and/or subsequences within those strings.
+                    if (ReferenceEquals(comparer, EqualityComparer<T>.Default) ||
+                        ReferenceEquals(comparer, StringComparer.Ordinal) ||
+                        ReferenceEquals(comparer, StringComparer.OrdinalIgnoreCase))
+                    {
+                        HashSet<string> stringValues = (HashSet<string>)(object)uniqueValues;
+                        IEqualityComparer<string> stringComparer = (IEqualityComparer<string>)(object)comparer;
+
+                        FrozenSet<string> frozenSet =
+                            LengthBucketsFrozenSet.TryCreateLengthBucketsFrozenSet(stringValues, stringComparer) ??
+                            (FrozenSet<string>)new OrdinalStringFrozenSet(stringValues, stringComparer);
+
+                        return (FrozenSet<T>)(object)frozenSet;
+                    }
+                }
+            }
+
+            // No special-cases apply. Use the default frozen set.
+            return new DefaultFrozenSet<T>(uniqueValues, comparer);
+        }
+
     }
 
     /// <summary>Provides an immutable, read-only set optimized for fast lookup and enumeration.</summary>
@@ -113,17 +232,25 @@ namespace System.Collections.Frozen
 #if NET5_0_OR_GREATER
         IReadOnlySet<T>,
 #endif
-        IReadOnlyCollection<T>, ICollection
+        IReadOnlyList<T>, IReadOnlyCollection<T>, ICollection
     {
         /// <summary>Initialize the set.</summary>
         /// <param name="comparer">The comparer to use and to expose from <see cref="Comparer"/>.</param>
-        private protected FrozenSet(IEqualityComparer<T> comparer) => Comparer = comparer;
+        /// <param name="orderComparer">The comparer to order set and to expose from <see cref="OrderComparer"/>.</param>
+        private protected FrozenSet(IEqualityComparer<T> comparer, IComparer<T>? orderComparer)
+        {
+            Comparer = comparer;
+            OrderComparer = orderComparer;
+        }
 
         /// <summary>Gets an empty <see cref="FrozenSet{T}"/>.</summary>
         public static FrozenSet<T> Empty { get; } = new EmptyFrozenSet<T>();
 
         /// <summary>Gets the comparer used by this set.</summary>
         public IEqualityComparer<T> Comparer { get; }
+
+        /// <summary>Gets the order comparer used by this set.</summary>
+        public IComparer<T>? OrderComparer { get; }
 
         /// <summary>Gets a collection containing the values in the set.</summary>
         /// <remarks>The order of the values in the set is unspecified.</remarks>
@@ -137,6 +264,11 @@ namespace System.Collections.Frozen
 
         /// <inheritdoc cref="Count" />
         private protected abstract int CountCore { get; }
+
+        public T this[int index] => IndexCore(index);
+
+        /// <inheritdoc cref="this[int]" />
+        private protected abstract T IndexCore(int index);
 
         /// <summary>Copies the values in the set to an array, starting at the specified <paramref name="destinationIndex"/>.</summary>
         /// <param name="destination">The array that is the destination of the values copied from the set.</param>

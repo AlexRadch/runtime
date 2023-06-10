@@ -18,6 +18,8 @@ namespace System.Collections.Frozen
         /// <inheritdoc />
         private protected override int CountCore => 0;
 
+        private protected override T IndexCore(int index) => throw new IndexOutOfRangeException();
+
         /// <inheritdoc />
         private protected override int FindItemIndex(T item) => -1;
 

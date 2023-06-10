@@ -72,13 +72,14 @@ namespace System.Collections.Frozen
     {
         public static System.Collections.Frozen.FrozenSet<T> ToFrozenSet<T>(this System.Collections.Generic.IEnumerable<T> source, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { throw null; }
     }
-    public abstract partial class FrozenSet<T> : System.Collections.Generic.ICollection<T>, System.Collections.Generic.IEnumerable<T>, System.Collections.Generic.IReadOnlyCollection<T>, System.Collections.Generic.ISet<T>, System.Collections.ICollection, System.Collections.IEnumerable
+    public abstract partial class FrozenSet<T> : System.Collections.Generic.IReadOnlyList<T>, System.Collections.Generic.ICollection<T>, System.Collections.Generic.IEnumerable<T>, System.Collections.Generic.IReadOnlyCollection<T>, System.Collections.Generic.ISet<T>, System.Collections.ICollection, System.Collections.IEnumerable
     {
         internal FrozenSet() { }
         public System.Collections.Generic.IEqualityComparer<T> Comparer { get { throw null; } }
         public int Count { get { throw null; } }
         public static System.Collections.Frozen.FrozenSet<T> Empty { get { throw null; } }
         public System.Collections.Immutable.ImmutableArray<T> Items { get { throw null; } }
+        public T this[int index] { get { throw null; } }
         bool System.Collections.Generic.ICollection<T>.IsReadOnly { get { throw null; } }
         bool System.Collections.ICollection.IsSynchronized { get { throw null; } }
         object System.Collections.ICollection.SyncRoot { get { throw null; } }
