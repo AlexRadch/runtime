@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -4286,7 +4287,7 @@ namespace System
         /// <summary>
         /// Enables enumerating each split within a <see cref="ReadOnlySpan{T}"/> that has been divided using one or more separators.
         /// </summary>
-        public ref struct SpanSplitEnumerator<T> where T : IEquatable<T>
+        public ref struct SpanSplitEnumerator<T> : IEnumerator<Range> where T : IEquatable<T>
         {
             /// <summary>The input span being split.</summary>
             private readonly ReadOnlySpan<T> _span;
@@ -4316,7 +4317,7 @@ namespace System
 
             /// <summary>Gets the current element of the enumeration.</summary>
             /// <returns>Returns a <see cref="Range"/> instance that indicates the bounds of the current element withing the source span.</returns>
-            public Range Current => new Range(_startCurrent, _endCurrent);
+            public readonly Range Current => new Range(_startCurrent, _endCurrent);
 
             /// <summary>Initializes the enumerator for <see cref="SpanSplitEnumeratorMode.SearchValues"/>.</summary>
             internal SpanSplitEnumerator(ReadOnlySpan<T> span, SearchValues<T> searchValues)
@@ -4424,6 +4425,10 @@ namespace System
 
                 return true;
             }
+
+            object IEnumerator.Current => Current;
+            void IDisposable.Dispose() { }
+            void IEnumerator.Reset() => throw new NotSupportedException();
         }
 
         /// <summary>Indicates in which mode <see cref="SpanSplitEnumerator{T}"/> is operating, with regards to how it should interpret its state.</summary>

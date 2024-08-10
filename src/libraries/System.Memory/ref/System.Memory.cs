@@ -5,6 +5,8 @@
 // ------------------------------------------------------------------------------
 
 #if !BUILDING_CORELIB_REFERENCE
+using System.Collections.Generic;
+
 namespace System
 {
     public readonly partial struct SequencePosition : System.IEquatable<System.SequencePosition>
@@ -415,13 +417,16 @@ namespace System
         public static bool TryWrite<TArg0, TArg1, TArg2>(this System.Span<char> destination, System.IFormatProvider? provider, System.Text.CompositeFormat format, out int charsWritten, TArg0 arg0, TArg1 arg1, TArg2 arg2) { throw null; }
         public static bool TryWrite(this Span<char> destination, System.IFormatProvider? provider, System.Text.CompositeFormat format, out int charsWritten, params object?[] args) { throw null; }
         public static bool TryWrite(this Span<char> destination, System.IFormatProvider? provider, System.Text.CompositeFormat format, out int charsWritten, params System.ReadOnlySpan<object?> args) { throw null; }
-        public ref struct SpanSplitEnumerator<T> where T : System.IEquatable<T>
+        public ref struct SpanSplitEnumerator<T> : System.Collections.Generic.IEnumerator<System.Range>, System.Collections.IEnumerator, System.IDisposable where T : System.IEquatable<T>
         {
             private object _dummy;
             private int _dummyPrimitive;
             public readonly System.Range Current { get { throw null; } }
             public System.MemoryExtensions.SpanSplitEnumerator<T> GetEnumerator() { throw null; }
             public bool MoveNext() { throw null; }
+            object System.Collections.IEnumerator.Current { get { throw null; } }
+            void System.IDisposable.Dispose() { throw null; }
+            void System.Collections.IEnumerator.Reset() { throw null; }
         }
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         [System.Runtime.CompilerServices.InterpolatedStringHandlerAttribute]
@@ -735,7 +740,7 @@ namespace System.Runtime.InteropServices
 }
 namespace System.Text
 {
-    public ref partial struct SpanLineEnumerator
+    public ref partial struct SpanLineEnumerator : IEnumerator<ReadOnlySpan<char>>
     {
         private object _dummy;
         private int _dummyPrimitive;
