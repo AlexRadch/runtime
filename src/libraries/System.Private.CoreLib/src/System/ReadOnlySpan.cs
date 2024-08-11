@@ -268,12 +268,14 @@ namespace System
                 get => ref _span[_index];
             }
 
+            /// <summary>Gets the element at the current position of the enumerator.</summary>
             T IEnumerator<T>.Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => Current;
             }
 
+            /// <summary>Gets the element at the current position of the enumerator.</summary>
             object IEnumerator.Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -281,7 +283,6 @@ namespace System
             }
 
             void IDisposable.Dispose() { }
-
             void IEnumerator.Reset() => _index = -1;
         }
 

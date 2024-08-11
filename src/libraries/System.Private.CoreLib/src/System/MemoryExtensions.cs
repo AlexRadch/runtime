@@ -4426,7 +4426,10 @@ namespace System
                 return true;
             }
 
+            /// <summary>Gets the current element of the enumeration.</summary>
+            /// <returns>Returns a <see cref="Range"/> instance that indicates the bounds of the current element withing the source span.</returns>
             object IEnumerator.Current => Current;
+
             void IDisposable.Dispose() { }
             void IEnumerator.Reset() => throw new NotSupportedException();
         }

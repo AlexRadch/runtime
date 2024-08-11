@@ -46,6 +46,7 @@ namespace System.Text
         {
             if (!_isEnumeratorActive)
             {
+                _current = _remaining;
                 return false; // EOF previously reached or enumerator was never initialized
             }
 
@@ -79,7 +80,6 @@ namespace System.Text
         }
 
         object IEnumerator.Current => throw new NotSupportedException();
-
         void IDisposable.Dispose() { }
         void IEnumerator.Reset() => throw new NotSupportedException();
     }

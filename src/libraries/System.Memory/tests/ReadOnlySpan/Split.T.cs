@@ -12,7 +12,7 @@ namespace System.SpanTests
     public static partial class ReadOnlySpanTests
     {
         [Fact]
-        public static void DefaultSpanSplitEnumeratorBehavior()
+        public static void SpanSplitEnumerator_Default()
         {
             var charSpanEnumerator = new MemoryExtensions.SpanSplitEnumerator<char>();
             Assert.Equal(new Range(0, 0), charSpanEnumerator.Current);
@@ -158,7 +158,7 @@ namespace System.SpanTests
         }
 
         [Fact]
-        public static void SplitAnySeparatorData()
+        public static void SplitAny_SeparatorData()
         {
             // Split no separators
             Test((char[])['a', ' ', 'b'], (char[])[],      (Range[])[0..1, 2..3]); // an empty span of separators for char is handled as all whitespace being separators

@@ -740,20 +740,26 @@ namespace System.Runtime.InteropServices
 }
 namespace System.Text
 {
-    public ref partial struct SpanLineEnumerator : IEnumerator<ReadOnlySpan<char>>
+    public ref partial struct SpanLineEnumerator : System.Collections.Generic.IEnumerator<System.ReadOnlySpan<char>>, System.Collections.IEnumerator, System.IDisposable
     {
         private object _dummy;
         private int _dummyPrimitive;
         public System.ReadOnlySpan<char> Current { get { throw null; } }
         public System.Text.SpanLineEnumerator GetEnumerator() { throw null; }
         public bool MoveNext() { throw null; }
+        object System.Collections.IEnumerator.Current { get { throw null; } }
+        void IDisposable.Dispose() { throw null; }
+        void System.Collections.IEnumerator.Reset() { throw null; }
     }
-    public ref partial struct SpanRuneEnumerator
+    public ref partial struct SpanRuneEnumerator : System.Collections.Generic.IEnumerator<System.Text.Rune>, System.Collections.IEnumerator, System.IDisposable
     {
         private object _dummy;
         private int _dummyPrimitive;
         public System.Text.Rune Current { get { throw null; } }
         public System.Text.SpanRuneEnumerator GetEnumerator() { throw null; }
         public bool MoveNext() { throw null; }
+        object System.Collections.IEnumerator.Current { get { throw null; } }
+        void IDisposable.Dispose() { throw null; }
+        void System.Collections.IEnumerator.Reset() { throw null; }
     }
 }
