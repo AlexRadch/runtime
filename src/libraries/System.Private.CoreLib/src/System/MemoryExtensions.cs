@@ -4317,7 +4317,7 @@ namespace System
 
             /// <summary>Gets the current element of the enumeration.</summary>
             /// <returns>Returns a <see cref="Range"/> instance that indicates the bounds of the current element withing the source span.</returns>
-            public readonly Range Current => new Range(_startCurrent, _endCurrent);
+            public Range Current => new Range(_startCurrent, _endCurrent);
 
             /// <summary>Initializes the enumerator for <see cref="SpanSplitEnumeratorMode.SearchValues"/>.</summary>
             internal SpanSplitEnumerator(ReadOnlySpan<T> span, SearchValues<T> searchValues)
@@ -4430,8 +4430,8 @@ namespace System
             /// <returns>Returns a <see cref="Range"/> instance that indicates the bounds of the current element withing the source span.</returns>
             object IEnumerator.Current => Current;
 
-            void IDisposable.Dispose() { }
             void IEnumerator.Reset() => throw new NotSupportedException();
+            void IDisposable.Dispose() { }
         }
 
         /// <summary>Indicates in which mode <see cref="SpanSplitEnumerator{T}"/> is operating, with regards to how it should interpret its state.</summary>

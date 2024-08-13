@@ -69,7 +69,7 @@ namespace System.Text
         /// </summary>
         object IEnumerator.Current => Current;
 
-        void IDisposable.Dispose() { }
         void IEnumerator.Reset() => throw new NotSupportedException();
+        void IDisposable.Dispose() { }
     }
 }

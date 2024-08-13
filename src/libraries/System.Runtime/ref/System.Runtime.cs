@@ -5103,8 +5103,8 @@ namespace System
             public bool MoveNext() { throw null; }
             T System.Collections.Generic.IEnumerator<T>.Current { get { throw null; } }
             object System.Collections.IEnumerator.Current { get { throw null; } }
-            void System.IDisposable.Dispose() { throw null; }
             void System.Collections.IEnumerator.Reset() { throw null; }
+            void System.IDisposable.Dispose() { throw null; }
         }
     }
     public partial class ResolveEventArgs : System.EventArgs
@@ -5564,8 +5564,8 @@ namespace System
             public bool MoveNext() { throw null; }
             T System.Collections.Generic.IEnumerator<T>.Current { get { throw null; } }
             object System.Collections.IEnumerator.Current { get { throw null; } }
-            void System.IDisposable.Dispose() { throw null; }
             void System.Collections.IEnumerator.Reset() { throw null; }
+            void System.IDisposable.Dispose() { throw null; }
         }
     }
     public sealed partial class StackOverflowException : System.SystemException

@@ -5,8 +5,6 @@
 // ------------------------------------------------------------------------------
 
 #if !BUILDING_CORELIB_REFERENCE
-using System.Collections.Generic;
-
 namespace System
 {
     public readonly partial struct SequencePosition : System.IEquatable<System.SequencePosition>
@@ -425,8 +423,8 @@ namespace System
             public System.MemoryExtensions.SpanSplitEnumerator<T> GetEnumerator() { throw null; }
             public bool MoveNext() { throw null; }
             object System.Collections.IEnumerator.Current { get { throw null; } }
-            void System.IDisposable.Dispose() { throw null; }
             void System.Collections.IEnumerator.Reset() { throw null; }
+            void System.IDisposable.Dispose() { throw null; }
         }
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         [System.Runtime.CompilerServices.InterpolatedStringHandlerAttribute]
@@ -748,8 +746,8 @@ namespace System.Text
         public System.Text.SpanLineEnumerator GetEnumerator() { throw null; }
         public bool MoveNext() { throw null; }
         object System.Collections.IEnumerator.Current { get { throw null; } }
-        void IDisposable.Dispose() { throw null; }
         void System.Collections.IEnumerator.Reset() { throw null; }
+        void IDisposable.Dispose() { throw null; }
     }
     public ref partial struct SpanRuneEnumerator : System.Collections.Generic.IEnumerator<System.Text.Rune>, System.Collections.IEnumerator, System.IDisposable
     {
@@ -759,7 +757,7 @@ namespace System.Text
         public System.Text.SpanRuneEnumerator GetEnumerator() { throw null; }
         public bool MoveNext() { throw null; }
         object System.Collections.IEnumerator.Current { get { throw null; } }
-        void IDisposable.Dispose() { throw null; }
         void System.Collections.IEnumerator.Reset() { throw null; }
+        void IDisposable.Dispose() { throw null; }
     }
 }

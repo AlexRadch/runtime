@@ -282,8 +282,8 @@ namespace System
                 get => Current!;
             }
 
-            void IDisposable.Dispose() { }
             void IEnumerator.Reset() => _index = -1;
+            void IDisposable.Dispose() { }
         }
 
         /// <summary>

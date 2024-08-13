@@ -255,7 +255,7 @@ namespace System
             }
 
             /// <summary>Gets the element at the current position of the enumerator.</summary>
-            public readonly ref T Current
+            public ref T Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => ref _span[_index];
@@ -275,8 +275,8 @@ namespace System
                 get => Current!;
             }
 
-            void IDisposable.Dispose() { }
             void IEnumerator.Reset() => _index = -1;
+            void IDisposable.Dispose() { }
         }
 
         /// <summary>
