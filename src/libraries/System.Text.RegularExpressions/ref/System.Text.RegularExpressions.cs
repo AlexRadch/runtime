@@ -259,9 +259,9 @@ namespace System.Text.RegularExpressions
             public readonly System.Range Current { get { throw null; } }
             public readonly System.Text.RegularExpressions.Regex.ValueSplitEnumerator GetEnumerator() { throw null; }
             public bool MoveNext() { throw null; }
-            readonly object IEnumerator.Current { get { throw null; } }
-            void IEnumerator.Reset() { throw null; }
-            void IDisposable.Dispose() { throw null; }
+            readonly object System.Collections.IEnumerator.Current { get { throw null; } }
+            void System.Collections.IEnumerator.Reset() { throw null; }
+            void System.IDisposable.Dispose() { throw null; }
         }
     }
     [System.ObsoleteAttribute("Regex.CompileToAssembly is obsolete and not supported. Use the GeneratedRegexAttribute with the regular expression source generator instead.", DiagnosticId = "SYSLIB0036", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
