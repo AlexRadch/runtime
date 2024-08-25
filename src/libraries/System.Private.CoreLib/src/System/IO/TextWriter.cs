@@ -125,6 +125,24 @@ namespace System.IO
         {
         }
 
+        /// <summary>
+        /// Writes the rune <paramref name="value"/> to the text stream.
+        /// </summary>
+        /// <param name="value">The <see cref="Rune"/> to write to the text stream.</param>
+        public virtual void Write(Rune value)
+        {
+            if (value.IsBmp)
+            {
+                Write((char)value.Value);
+            }
+            else
+            {
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out char highChar, out char lowChar);
+                Write(highChar);
+                Write(lowChar);
+            }
+        }
+
         // Writes a character array to the text stream. This default method calls
         // Write(char) for each of the characters in the character array.
         // If the character array is null, nothing is written.
@@ -343,6 +361,16 @@ namespace System.IO
             WriteLine();
         }
 
+        /// <summary>
+        /// Writes the rune <paramref name="value"/> followed by a line terminator to the text stream.
+        /// </summary>
+        /// <param name="value">The <see cref="Rune"/> followed by a line terminator to write to the text stream.</param>
+        public virtual void WriteLine(Rune value)
+        {
+            Write(value);
+            WriteLine();
+        }
+
         // Writes an array of characters followed by a line terminator to the text
         // stream.
         //
@@ -542,6 +570,17 @@ namespace System.IO
                 t.Item1.Write(t.Item2);
             }, new TupleSlim<TextWriter, char>(this, value), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
 
+        /// <summary>
+        /// Asynchronously writes the rune <paramref name="value"/> to the text stream.
+        /// </summary>
+        /// <param name="value">The <see cref="Rune"/> to asynchronously write to the text stream.</param>
+        public virtual Task WriteAsync(Rune value) =>
+            Task.Factory.StartNew(static state =>
+            {
+                var t = (TupleSlim<TextWriter, Rune>)state!;
+                t.Item1.Write(t.Item2);
+            }, new TupleSlim<TextWriter, Rune>(this, value), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+
         public virtual Task WriteAsync(string? value) =>
             Task.Factory.StartNew(static state =>
             {
@@ -604,6 +643,17 @@ namespace System.IO
                 var t = (TupleSlim<TextWriter, char>)state!;
                 t.Item1.WriteLine(t.Item2);
             }, new TupleSlim<TextWriter, char>(this, value), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+
+        /// <summary>
+        /// Asynchronously writes the rune <paramref name="value"/> followed by a line terminator to the text stream.
+        /// </summary>
+        /// <param name="value">The <see cref="Rune"/> followed by a line terminator to asynchronously write to the text stream.</param>
+        public virtual Task WriteLineAsync(Rune value) =>
+            Task.Factory.StartNew(static state =>
+            {
+                var t = (TupleSlim<TextWriter, Rune>)state!;
+                t.Item1.WriteLine(t.Item2);
+            }, new TupleSlim<TextWriter, Rune>(this, value), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
 
         public virtual Task WriteLineAsync(string? value) =>
             Task.Factory.StartNew(static state =>

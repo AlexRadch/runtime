@@ -34,6 +34,22 @@ namespace System.IO.Tests
         }
 
         [Fact]
+        public void WriteRuneTest()
+        {
+            using (CharArrayTextWriter tw = NewTextWriter)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (var rune in TestDataProvider.CharData.AsSpan().EnumerateRunes())
+                {
+                    sb.Append(rune.ToString());
+                    tw.Write(rune);
+                }
+
+                Assert.Equal(sb.ToString(), tw.Text);
+            }
+        }
+
+        [Fact]
         public void WriteCharArrayTest()
         {
             using (CharArrayTextWriter tw = NewTextWriter)
@@ -272,6 +288,24 @@ namespace System.IO.Tests
         }
 
         [Fact]
+        public void WriteLineRuneTest()
+        {
+            using (CharArrayTextWriter tw = NewTextWriter)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (var rune in TestDataProvider.CharData.AsSpan().EnumerateRunes())
+                {
+                    sb.Append(rune.ToString());
+                    sb.Append(tw.NewLine);
+                    tw.WriteLine(rune);
+                }
+
+                Assert.Equal(sb.ToString(), tw.Text);
+            }
+        }
+
+
+        [Fact]
         public void WriteLineCharArrayTest()
         {
             using (CharArrayTextWriter tw = NewTextWriter)
@@ -497,6 +531,16 @@ namespace System.IO.Tests
         }
 
         [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        public async Task WriteAsyncRuneTest()
+        {
+            using (CharArrayTextWriter tw = NewTextWriter)
+            {
+                await tw.WriteAsync(new Rune(0x1F60A));
+                Assert.Equal(new Rune(0x1F60A).ToString(), tw.Text);
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
         public async Task WriteAsyncStringTest()
         {
             using (CharArrayTextWriter tw = NewTextWriter)
@@ -538,6 +582,16 @@ namespace System.IO.Tests
             {
                 await tw.WriteLineAsync('a');
                 Assert.Equal("a" + tw.NewLine, tw.Text);
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        public async Task WriteLineAsyncRuneTest()
+        {
+            using (CharArrayTextWriter tw = NewTextWriter)
+            {
+                await tw.WriteLineAsync(new Rune(0x1F60A));
+                Assert.Equal(new Rune(0x1F60A).ToString() + tw.NewLine, tw.Text);
             }
         }
 
