@@ -158,6 +158,82 @@ namespace System.Text.Tests
         }
 
         [Fact]
+        public static void GetRuneAt_TryGetRuneAt()
+        {
+            {
+                // Chars
+                string s = "Hello" + (char)Rune.ReplacementChar.Value;
+                var builder = new StringBuilder(s);
+
+                for (int i = 0; i < s.Length; i++)
+                {
+                    Assert.Equal(s[i], builder.GetRuneAt(i).Value);
+                    Assert.True(builder.TryGetRuneAt(i, out var rune));
+                    Assert.Equal(s[i], rune.Value);
+                }
+            }
+            {
+                // Correct surrogate pairs
+                string s = "😀😉😁😆😅";
+                var builder = new StringBuilder(s);
+
+                for (int i = 0; i < s.Length; i += 2)
+                {
+                    var expected = new Rune(s[i], s[i + 1]);
+                    Assert.Equal(expected, builder.GetRuneAt(i));
+                    Assert.True(builder.TryGetRuneAt(i, out var rune));
+                    Assert.Equal(expected, rune);
+                }
+            }
+            {
+                // Incorrect surrogate pairs
+                string s = "" + (char)0xD801 + " " + (char)0xDC02 + " " +
+                    (char)0xDC03 + (char)0xD804 + " " +
+                    Rune.ReplacementChar.Value +
+                    (char)0xD805;
+
+                var builder = new StringBuilder(s);
+
+                for (int i = 0; i < s.Length; i += 2)
+                {
+                    int expected = s[i];
+                    if (expected >= 0xD800 && expected <= 0xDFFF)
+                    {
+                        expected = Rune.ReplacementChar.Value;
+                        Assert.Equal(expected, builder.GetRuneAt(i).Value);
+                        Assert.False(builder.TryGetRuneAt(i, out var rune));
+                        Assert.Equal(expected, rune.Value);
+                    }
+                    else
+                    {
+                        Assert.Equal(expected, builder.GetRuneAt(i).Value);
+                        Assert.True(builder.TryGetRuneAt(i, out var rune));
+                        Assert.Equal(expected, rune.Value);
+                    }
+
+                }
+
+                {
+                    builder.Append((char)0xDC06);
+                    int expected = Rune.ReplacementChar.Value;
+                    Assert.Equal(expected, builder.GetRuneAt(s.Length).Value);
+                    Assert.False(builder.TryGetRuneAt(s.Length, out var rune));
+                    Assert.Equal(expected, rune.Value);
+                }
+            }
+        }
+
+        [Fact]
+        public static void GetRuneAt_TryGetRuneAt_InvalidIndex()
+        {
+            var builder = new StringBuilder("Hello");
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.GetRuneAt(-1)); // Index < 0
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.TryGetRuneAt(-1, out _)); // Index < 0
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.GetRuneAt(5)); // Index >= string.Length
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.TryGetRuneAt(5, out _)); // Index >= string.Length
+        }
+
+        [Fact]
         public static void Capacity_Get_Set()
         {
             var builder = new StringBuilder("Hello");
@@ -705,6 +781,28 @@ namespace System.Text.Tests
 
             AssertExtensions.Throws<ArgumentOutOfRangeException>("valueCount", () => builder.Append(new char[] { 'a' })); // New length > builder.MaxCapacity
             AssertExtensions.Throws<ArgumentOutOfRangeException>("valueCount", () => builder.Append(new char[] { 'a' }, 0, 1)); // New length > builder.MaxCapacity
+        }
+
+        [Theory]
+        [InlineData("Hello", 0x0000u, "Hello\0")]
+        [InlineData("Hello", (uint)'a', "Helloa")]
+        [InlineData("", 0xFFFDu, "\uFFFD")]
+        [InlineData("Hello", 0x1F923u, "Hello🤣")]
+        public static void Append_Rune(string original, uint runeValue, string expected)
+        {
+            var builder = new StringBuilder(original);
+            builder.Append(new Rune(runeValue));
+            Assert.Equal(expected, builder.ToString());
+        }
+
+        [Fact]
+        public static void Append_Rune_NoSpareCapacity_ThrowsArgumentOutOfRangeException()
+        {
+            var builder = new StringBuilder(0, 5);
+            builder.Append("Hello");
+
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("requiredLength", () => builder.Append(Rune.ReplacementChar));
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("valueCount", () => builder.Append(new Rune(0x1F602)));
         }
 
         public static IEnumerable<object[]> AppendFormat_TestData()
@@ -1728,6 +1826,86 @@ namespace System.Text.Tests
         }
 
         [Theory]
+        [InlineData("", 'a', '!', 0, 0, "")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', '!', 0, 20, "!!!!bbbbccccdddd!!!!")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', '!', 1, 2, "a!!abbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', '!', 2, 4, "aa!!bbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', '!', 4, 13, "aaaabbbbccccdddd!aaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'b', '!', 5, 0, "aaaabbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', '!', 20, 0, "aaaabbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'e', '!', 0, 20, "aaaabbbbccccddddaaaa")]
+        [InlineData("", 'a', 0x1F607u, 0, 0, "")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', 0x1F607u, 0, 20, "😇😇😇😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', 0x1F607u, 1, 2, "a😇😇abbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', 0x1F607u, 2, 4, "aa😇😇bbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', 0x1F607u, 4, 13, "aaaabbbbccccdddd😇aaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'b', 0x1F607u, 5, 0, "aaaabbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'a', 0x1F607u, 20, 0, "aaaabbbbccccddddaaaa")]
+        [InlineData("aaaabbbbccccddddaaaa", 'e', 0x1F607u, 0, 20, "aaaabbbbccccddddaaaa")]
+        [InlineData("", 0x1F607u, '!', 0, 0, "")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 0, 28, "!!!!bbbbccccdddd!!!!")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 1, 27, "😇!!!bbbbccccdddd!!!!")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 1, 26, "😇!!!bbbbccccdddd!!!😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 2, 26, "😇!!!bbbbccccdddd!!!!")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 2, 25, "😇!!!bbbbccccdddd!!!😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 2, 24, "😇!!!bbbbccccdddd!!!😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 2, 4, "😇!!😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 2, 5, "😇!!😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 1, 5, "😇!!😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 1, 6, "😇!!😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 8, 14, "😇😇😇😇bbbbccccdddd!😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 8, 15, "😇😇😇😇bbbbccccdddd!😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 7, 15, "😇😇😇😇bbbbccccdddd!😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 7, 16, "😇😇😇😇bbbbccccdddd!😇😇😇")]
+        [InlineData("😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇", 0x1F929u, '!', 10, 0, "😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇", 0x1F929u, '!', 10, 1, "😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇", 0x1F929u, '!', 9, 1, "😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇", 0x1F929u, '!', 9, 2, "😇😇😇😇🤩🤩🤩🤩ccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 28, 0, "😇😇😇😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 27, 0, "😇😇😇😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F607u, '!', 27, 1, "😇😇😇😇bbbbccccdddd😇😇😇😇")]
+        [InlineData("😇😇😇😇bbbbccccdddd😇😇😇😇", 0x1F609u, '!', 0, 28, "😇😇😇😇bbbbccccdddd😇😇😇😇")]
+        public static void Replace_Rune(string value, uint oldValue, uint newValue, int startIndex, int count, string expected)
+        {
+            StringBuilder builder;
+            if (startIndex == 0 && count == value.Length)
+            {
+                // Use Replace(Rune, Rune)
+                builder = new StringBuilder(value);
+                builder.Replace(new Rune(oldValue), new Rune(newValue));
+                Assert.Equal(expected, builder.ToString());
+            }
+            // Use Replace(Rune, Rune, int, int)
+            builder = new StringBuilder(value);
+            builder.Replace(new Rune(oldValue), new Rune(newValue), startIndex, count);
+            Assert.Equal(expected, builder.ToString());
+        }
+
+        [Fact]
+        public static void Replace_Rune_StringBuilderWithMultipleChunks()
+        {
+            StringBuilder builder = StringBuilderWithMultipleChunks();
+            var count = builder.Length;
+            var newRune = Rune.GetRuneAt("😋", 0);
+            builder.Replace(new Rune('a'), newRune, 0, count);
+            Assert.Equal(string.Concat(Enumerable.Range(0, count).Select(i => newRune)), builder.ToString());
+        }
+
+        [Fact]
+        public static void Replace_Rune_Invalid()
+        {
+            var builder = new StringBuilder("Hello");
+            var oldRune = Rune.GetRuneAt("😛", 0);
+            var newRune = Rune.GetRuneAt("😜", 0);
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("startIndex", () => builder.Replace(oldRune, newRune, -1, 0)); // Start index < 0
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => builder.Replace(oldRune, newRune, 0, -1)); // Count < 0
+
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("startIndex", () => builder.Replace(oldRune, newRune, 6, 0)); // Count + start index > builder.Length
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => builder.Replace(oldRune, newRune, 5, 1)); // Count + start index > builder.Length
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => builder.Replace(oldRune, newRune, 4, 2)); // Count + start index > builder.Length
+        }
+
+        [Theory]
         [InlineData("Hello", 0, 5, "Hello")]
         [InlineData("Hello", 2, 3, "llo")]
         [InlineData("Hello", 2, 2, "ll")]
@@ -2051,6 +2229,37 @@ namespace System.Text.Tests
             AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(-1, new ReadOnlySpan<char>(new char[0]))); // Index < 0
             AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(builder.Length + 1, new ReadOnlySpan<char>(new char[0]))); // Index > builder.Length
             AssertExtensions.Throws<ArgumentOutOfRangeException>("requiredLength", () => builder.Insert(builder.Length, new ReadOnlySpan<char>(new char[1]))); // New length > builder.MaxCapacity
+        }
+
+        [Theory]
+        [InlineData("Hello", 0, 0x0000u, "\0Hello")]
+        [InlineData("Hello", 3, (uint)'a', "Helalo")]
+        [InlineData("Hello", 5, (uint)'b', "Hellob")]
+        [InlineData("", 0, 0xFFFDu, "\uFFFD")]
+        [InlineData("Hello", 0, 0x1F923u, "🤣Hello")]
+        [InlineData("Hello", 3, 0x1F642u, "Hel🙂lo")]
+        [InlineData("Hello", 5, 0x1F643u, "Hello🙃")]
+        [InlineData("", 0, 0x1F609u, "😉")]
+        public static void Insert_Rune(string original, int index, uint runeValue, string expected)
+        {
+            var builder = new StringBuilder(original);
+            builder.Insert(index, new Rune(runeValue));
+            Assert.Equal(expected, builder.ToString());
+        }
+
+        [Fact]
+        public static void Insert_Rune_Invalid()
+        {
+            var builder = new StringBuilder(0, 5);
+            builder.Append("Hello");
+
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(-1, Rune.ReplacementChar)); // Index < 0
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(builder.Length + 1, 0x000u)); // Index > builder.Length
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("requiredLength", () => builder.Insert(builder.Length, new Rune('a'))); // New length > builder.MaxCapacity
+
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(-1, new Rune(0x1F603))); // Index < 0
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("index", () => builder.Insert(builder.Length + 1, new Rune(0x1F604))); // Index > builder.Length
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("requiredLength", () => builder.Insert(builder.Length, new Rune(0x1F605))); // New length > builder.MaxCapacity
         }
 
         public static IEnumerable<object[]> Append_StringBuilder_TestData()

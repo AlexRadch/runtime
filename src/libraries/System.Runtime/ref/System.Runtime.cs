@@ -15353,6 +15353,7 @@ namespace System.Text
         public int EncodeToUtf16(System.Span<char> destination) { throw null; }
         public int EncodeToUtf8(System.Span<byte> destination) { throw null; }
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
+        public static bool Equals(System.Text.Rune left, System.Text.Rune right) { throw null; }
         public bool Equals(System.Text.Rune other) { throw null; }
         public override int GetHashCode() { throw null; }
         public static double GetNumericValue(System.Text.Rune value) { throw null; }
@@ -15430,6 +15431,7 @@ namespace System.Text
         public System.Text.StringBuilder Append(object? value) { throw null; }
         public System.Text.StringBuilder Append(System.ReadOnlyMemory<char> value) { throw null; }
         public System.Text.StringBuilder Append(System.ReadOnlySpan<char> value) { throw null; }
+        public System.Text.StringBuilder Append(System.Text.Rune value) { throw null; }
         [System.CLSCompliantAttribute(false)]
         public System.Text.StringBuilder Append(sbyte value) { throw null; }
         public System.Text.StringBuilder Append(float value) { throw null; }
@@ -15480,6 +15482,7 @@ namespace System.Text
         public bool Equals(System.ReadOnlySpan<char> span) { throw null; }
         public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.Text.StringBuilder? sb) { throw null; }
         public System.Text.StringBuilder.ChunkEnumerator GetChunks() { throw null; }
+        public System.Text.Rune GetRuneAt(int index) { throw null; }
         public System.Text.StringBuilder Insert(int index, bool value) { throw null; }
         public System.Text.StringBuilder Insert(int index, byte value) { throw null; }
         public System.Text.StringBuilder Insert(int index, char value) { throw null; }
@@ -15495,6 +15498,7 @@ namespace System.Text
         [System.CLSCompliantAttribute(false)]
         public System.Text.StringBuilder Insert(int index, sbyte value) { throw null; }
         public System.Text.StringBuilder Insert(int index, float value) { throw null; }
+        public System.Text.StringBuilder Insert(int index, System.Text.Rune value) { throw null; }
         public System.Text.StringBuilder Insert(int index, string? value) { throw null; }
         public System.Text.StringBuilder Insert(int index, string? value, int count) { throw null; }
         [System.CLSCompliantAttribute(false)]
@@ -15508,11 +15512,14 @@ namespace System.Text
         public System.Text.StringBuilder Replace(char oldChar, char newChar, int startIndex, int count) { throw null; }
         public System.Text.StringBuilder Replace(System.ReadOnlySpan<char> oldValue, System.ReadOnlySpan<char> newValue) { throw null; }
         public System.Text.StringBuilder Replace(System.ReadOnlySpan<char> oldValue, System.ReadOnlySpan<char> newValue, int startIndex, int count) { throw null; }
+        public System.Text.StringBuilder Replace(System.Text.Rune oldRune, System.Text.Rune newRune) { throw null; }
+        public System.Text.StringBuilder Replace(System.Text.Rune oldRune, System.Text.Rune newRune, int startIndex, int count) { throw null; }
         public System.Text.StringBuilder Replace(string oldValue, string? newValue) { throw null; }
         public System.Text.StringBuilder Replace(string oldValue, string? newValue, int startIndex, int count) { throw null; }
         void System.Runtime.Serialization.ISerializable.GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
         public override string ToString() { throw null; }
         public string ToString(int startIndex, int length) { throw null; }
+        public bool TryGetRuneAt(int index, out System.Text.Rune value) { throw null; }
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
         [System.Runtime.CompilerServices.InterpolatedStringHandlerAttribute]
         public partial struct AppendInterpolatedStringHandler

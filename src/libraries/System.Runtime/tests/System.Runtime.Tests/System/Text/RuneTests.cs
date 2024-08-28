@@ -286,8 +286,16 @@ namespace System.Text.Tests
             Assert.Equal(expected, Object.Equals(a, b));
             Assert.Equal(expected, a.Equals(b));
             Assert.Equal(expected, a.Equals((object)b));
+            Assert.Equal(expected, Rune.Equals(a, b));
             Assert.Equal(expected, a == b);
             Assert.NotEqual(expected, a != b);
+
+            Assert.Equal(expected, Object.Equals(b, a));
+            Assert.Equal(expected, b.Equals(a));
+            Assert.Equal(expected, b.Equals((object)a));
+            Assert.Equal(expected, Rune.Equals(b, a));
+            Assert.Equal(expected, b == a);
+            Assert.NotEqual(expected, b != a);
         }
 
         [Theory]

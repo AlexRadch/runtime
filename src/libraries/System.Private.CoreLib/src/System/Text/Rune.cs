@@ -764,6 +764,22 @@ namespace System.Text
 
         public bool Equals(Rune other) => this == other;
 
+        /// <summary>
+        /// Indicates whether the <paramref name="left"/> <see cref="Rune"/> are equal to the <paramref name="right"/>
+        /// <see cref="Rune"/>.
+        /// </summary>
+        /// <param name="left">
+        /// The left <see cref="Rune"/> to compare with the <paramref name="right"/> <see cref="Rune"/>.
+        /// </param>
+        /// <param name="right">
+        /// The right <see cref="Rune"/> to compare with the <paramref name="left"/> <see cref="Rune"/>.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are equal; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
+        public static bool Equals(Rune left, Rune right) => left == right;
+
         public override int GetHashCode() => Value;
 
         /// <summary>

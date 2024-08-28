@@ -491,6 +491,137 @@ namespace System.Text
         }
 
         /// <summary>
+        /// Gets the <see cref="Rune"/> at the <paramref name="index"/> character position in this
+        /// <see cref="StringBuilder"/>.
+        /// </summary>
+        /// <param name="index">The position of the character in this <see cref="StringBuilder"/>.</param>
+        /// <returns>
+        /// The <see cref="Rune"/> at the <paramref name="index"/> character position in this
+        /// <see cref="StringBuilder"/>.
+        /// <br/>
+        /// Invalid characters are represented by <see cref="Rune.ReplacementChar"/>.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="index"/> is outside the bounds of this <see cref="StringBuilder"/>.
+        /// </exception>
+        /// <remarks>
+        /// Using character-based indexing with the <see cref="GetRuneAt(int)"/> method can be extremely slow under
+        /// the following conditions:
+        /// <br/>
+        ///   * This <see cref="StringBuilder"/> is large (for example, it consists of several tens of thousands of
+        ///     characters).
+        ///     <br/>
+        ///   * This <see cref="StringBuilder"/> is "chunky." That is, repeated calls to methods such as
+        ///     <see cref="Append"/> have automatically expanded the object's <see cref="Capacity"/> property and
+        ///     allocated new chunks of memory to it.
+        /// <br/>
+        /// Performance is severely impacted because each character access walks the entire linked list of chunks to
+        /// find the correct buffer to index into.
+        /// </remarks>
+        /// <seealso cref="TryGetRuneAt(int, out Rune)"/>
+        /// <seealso cref="this[int]"/>
+        public Rune GetRuneAt(int index)
+        {
+            TryGetRuneAt(index, out Rune result);
+            return result;
+        }
+
+        /// <summary>
+        /// Try gets the <see cref="Rune"/> at the <paramref name="index"/> character position in this
+        /// <see cref="StringBuilder"/>.
+        /// </summary>
+        /// <param name="index">The position of the character.</param>
+        /// <param name="value">
+        /// The <see cref="Rune"/> at the <paramref name="index"/> character position in this
+        /// <see cref="StringBuilder"/> when this method return <see langword="true"/>.
+        /// <br/>
+        /// Invalid characters are represented by <see cref="Rune.ReplacementChar"/> value when this method return
+        /// <see langword="false"/>.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> when the <paramref name="index"/> character position contains valid characters;
+        /// <see langword="false"/> otherwise.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="index"/> is outside the bounds of this <see cref="StringBuilder"/>.
+        /// </exception>
+        /// <seealso cref="this[int]"/>
+        /// <remarks>
+        /// Using character-based indexing with the <see cref="TryGetRuneAt(int, out Rune)"/> method can be extremely
+        /// slow under the following conditions:
+        /// <br/>
+        ///   * This <see cref="StringBuilder"/> is large (for example, it consists of several tens of thousands of
+        ///     characters).
+        ///     <br/>
+        ///   * This <see cref="StringBuilder"/> is "chunky." That is, repeated calls to methods such as
+        ///     <see cref="Append"/> have automatically expanded the object's <see cref="Capacity"/> property and
+        ///     allocated new chunks of memory to it.
+        /// <br/>
+        /// Performance is severely impacted because each character access walks the entire linked list of chunks to
+        /// find the correct buffer to index into.
+        /// </remarks>
+        /// <seealso cref="GetRuneAt(int)"/>
+        /// <seealso cref="this[int]"/>
+        public bool TryGetRuneAt(int index, out Rune value)
+        {
+            StringBuilder? nextChunk = null;
+            StringBuilder? chunk = this;
+            while (true)
+            {
+                int indexInBlock = index - chunk.m_ChunkOffset;
+                if (indexInBlock >= 0)
+                {
+                    if (indexInBlock >= chunk.m_ChunkLength)
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(index), SR.ArgumentOutOfRange_IndexMustBeLess);
+                    }
+
+                    char first = chunk.m_ChunkChars[indexInBlock];
+                    if (!UnicodeUtility.IsSurrogateCodePoint(first))
+                    {
+                        value = Rune.UnsafeCreate(first);
+                        return true;
+                    }
+                    if (!UnicodeUtility.IsHighSurrogateCodePoint(first))
+                    {
+                        value = Rune.ReplacementChar;
+                        return false;
+                    }
+
+                    indexInBlock++;
+                    if (indexInBlock >= chunk.m_ChunkLength)
+                    {
+                        if (nextChunk == null)
+                        {
+                            value = Rune.ReplacementChar;
+                            return false;
+                        }
+
+                        chunk = nextChunk;
+                        indexInBlock = index - chunk.m_ChunkOffset; // always correct
+                        Debug.Assert((uint)indexInBlock < (uint)chunk.m_ChunkLength);
+                    }
+
+                    char second = chunk.m_ChunkChars[indexInBlock];
+                    if (!UnicodeUtility.IsLowSurrogateCodePoint(second))
+                    {
+                        value = Rune.ReplacementChar;
+                        return false;
+                    }
+
+                    value = Rune.UnsafeCreate(UnicodeUtility.GetScalarFromUtf16SurrogatePair(first, second));
+                    return true;
+                }
+                nextChunk = chunk;
+                chunk = chunk.m_ChunkPrevious;
+                if (chunk == null)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index), SR.ArgumentOutOfRange_IndexMustBeLess);
+                }
+            }
+        }
+
+        /// <summary>
         /// GetChunks returns ChunkEnumerator that follows the IEnumerable pattern and
         /// thus can be used in a C# 'foreach' statements to retrieve the data in the StringBuilder
         /// as chunks (ReadOnlyMemory) of characters.  An example use is:
@@ -1099,6 +1230,33 @@ namespace System.Text
 
         public StringBuilder Append(ReadOnlyMemory<char> value) => Append(value.Span);
 
+        /// <summary>
+        /// Append the <paramref name="value"/> <see cref="Rune"/> to this <see cref="StringBuilder"/>.
+        /// </summary>
+        /// <param name="value">The <see cref="Rune"/> to append to this <see cref="StringBuilder"/>.</param>
+        /// <returns>
+        /// A reference to this <see cref="StringBuilder"/> with <paramref name="value"/> <see cref="Rune"/> appended
+        /// to it.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Enlarging the value of this <see cref="StringBuilder"/> would exceed <see cref="MaxCapacity"/>.
+        /// </exception>
+        public StringBuilder Append(Rune value)
+        {
+            if (value.IsBmp)
+            {
+                Append((char)value.Value);
+            }
+            else
+            {
+
+                Span<char> chars = stackalloc char[2];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars[0], out chars[1]);
+                Append(ref chars[0], 2);
+            }
+            return this;
+        }
+
         /// <summary>Appends the specified interpolated string to this instance.</summary>
         /// <param name="handler">The interpolated string to append.</param>
         /// <returns>A reference to this instance after the append operation has completed.</returns>
@@ -1406,6 +1564,36 @@ namespace System.Text
                 Insert(index, ref MemoryMarshal.GetReference(value), value.Length);
             }
 
+            return this;
+        }
+
+        /// <summary>
+        /// Inserts the <paramref name="value"/> <see cref="Rune"/> to this <see cref="StringBuilder"/> at the
+        /// <paramref name="index"/> character position.
+        /// </summary>
+        /// <param name="index">The position in this <see cref="StringBuilder"/> where insertion begins.</param>
+        /// <param name="value">The <see cref="Rune"/> to insert to this <see cref="StringBuilder"/> at the
+        /// <paramref name="index"/> character position.</param>
+        /// <returns>
+        /// A reference to this <see cref="StringBuilder"/> with <paramref name="value"/> <see cref="Rune"/> inserted
+        /// to it the <paramref name="index"/> character position.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Enlarging the value of this <see cref="StringBuilder"/> would exceed <see cref="MaxCapacity"/>.
+        /// </exception>
+        public StringBuilder Insert(int index, Rune value)
+        {
+            if (value.IsBmp)
+            {
+                Insert(index, (char)value.Value);
+            }
+            else
+            {
+
+                Span<char> chars = stackalloc char[2];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars[0], out chars[1]);
+                Insert(index, ref chars[0], 2);
+            }
             return this;
         }
 
@@ -2245,6 +2433,91 @@ namespace System.Text
             }
 
             AssertInvariants();
+            return this;
+        }
+
+        /// <summary>
+        /// Replaces all occurrences of the <paramref name="oldRune"/> in this <see cref="StringBuilder"/> with
+        /// <paramref name="newRune"/>.
+        /// </summary>
+        /// <param name="oldRune">The <see cref="Rune"/> to replace with <paramref name="newRune"/>.</param>
+        /// <param name="newRune">The <see cref="Rune"/> that replaces <paramref name="oldRune"/>.</param>
+        /// <returns>
+        /// A reference to this <see cref="StringBuilder"/> with <paramref name="oldRune"/> replaced by
+        /// <paramref name="newRune"/>.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Enlarging the value of this <see cref="StringBuilder"/> would exceed <see cref="MaxCapacity"/>.
+        /// </exception>
+        /// <remarks>
+        /// This method performs an ordinal, case-sensitive comparison to identify occurrences of
+        /// <paramref name="oldRune"/> in the current <see cref="StringBuilder"/>.<br />
+        /// The size of the this <see cref="StringBuilder"/> instance can be changed after the replacement.
+        /// </remarks>
+        public StringBuilder Replace(Rune oldRune, Rune newRune) =>
+            Replace(oldRune, newRune, 0, Length);
+
+        /// <summary>
+        /// Replaces, within a substring of this <see cref="StringBuilder"/>, all occurrences of the
+        /// <paramref name="oldRune"/> with <paramref name="newRune"/>.
+        /// </summary>
+        /// <param name="oldRune">The <see cref="Rune"/> to replace with <paramref name="newRune"/>.</param>
+        /// <param name="newRune">The <see cref="Rune"/> that replaces <paramref name="oldRune"/>.</param>
+        /// <param name="startIndex">The position in this <see cref="StringBuilder"/> where the substring begins.</param>
+        /// <param name="count">The length of the substring in this <see cref="StringBuilder"/>.</param>
+        /// <returns>
+        /// A reference to this <see cref="StringBuilder"/> with <paramref name="oldRune"/> replaced by
+        /// <paramref name="newRune"/> in the range from <paramref name="startIndex"/> to <paramref name="startIndex"/>
+        /// + <paramref name="count"/> - 1.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="startIndex"/> or <paramref name="count"/> is less than zero.
+        /// <br />-or-<br />
+        /// <paramref name="startIndex"/> + <paramref name="count"/> is greater than the <see cref="Length"/> of the
+        /// value of this <see cref="StringBuilder"/>.
+        /// <br />-or-<br />
+        /// Enlarging the value of this <see cref="StringBuilder"/> would exceed <see cref="MaxCapacity"/>.
+        /// </exception>
+        /// <remarks>
+        /// This method performs an ordinal, case-sensitive comparison to identify occurrences of
+        /// <paramref name="oldRune"/> in the current <see cref="StringBuilder"/>.<br />
+        /// The size of the this <see cref="StringBuilder"/> instance can be changed after the replacement.
+        /// </remarks>
+        public StringBuilder Replace(Rune oldRune, Rune newRune, int startIndex, int count)
+        {
+            if (oldRune.IsBmp)
+            {
+                if (newRune.IsBmp)
+                {
+                    Replace((char)oldRune.Value, (char)newRune.Value, startIndex, count);
+                }
+                else
+                {
+                    char oldChar = (char)oldRune.Value;
+                    Span<char> newChars = stackalloc char[2];
+                    UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars[0], out newChars[1]);
+
+                    Replace(new ReadOnlySpan<char>(ref oldChar), newChars, startIndex, count);
+                }
+            }
+            else
+            {
+                Span<char> oldChars = stackalloc char[2];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars[0], out oldChars[1]);
+
+                if (newRune.IsBmp)
+                {
+                    char newChar = (char)newRune.Value;
+                    Replace(oldChars, new ReadOnlySpan<char>(ref newChar), startIndex, count);
+                }
+                else
+                {
+                    Span<char> newChars = stackalloc char[2];
+                    UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars[0], out newChars[1]);
+
+                    Replace(oldChars, newChars, startIndex, count);
+                }
+            }
             return this;
         }
 
