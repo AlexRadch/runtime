@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Unicode;
 
 namespace System
@@ -1180,6 +1181,19 @@ namespace System
             }
 
             return Length != 0 && _firstChar == value;
+        }
+
+        public bool StartsWith(Rune value)
+        {
+            if (value.IsBmp)
+                return StartsWith((char)value.Value);
+
+            if (Length < 2)
+                return false;
+
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out char hChar, out char lChar);
+
+            return _firstChar == hChar && Unsafe.Add(ref _firstChar, 1) == lChar;
         }
 
         internal static void CheckStringComparison(StringComparison comparisonType)

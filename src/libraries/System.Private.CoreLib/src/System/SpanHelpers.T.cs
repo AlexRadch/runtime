@@ -2415,6 +2415,10 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int LastIndexOfChar(ref char searchSpace, char value, int length)
+            => LastIndexOfValueType(ref Unsafe.As<char, short>(ref searchSpace), (short)value, length);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int LastIndexOfValueType<T>(ref T searchSpace, T value, int length) where T : struct, INumber<T>
             => LastIndexOfValueType<T, DontNegate<T>>(ref searchSpace, value, length);
 
@@ -2533,6 +2537,10 @@ namespace System
                 return -1;
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int LastIndexOfAnyChar(ref char searchSpace, char value0, char value1, int length)
+            => LastIndexOfAnyValueType(ref Unsafe.As<char, short>(ref searchSpace), (short)value0, (short)value1, length);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int LastIndexOfAnyValueType<T>(ref T searchSpace, T value0, T value1, int length) where T : struct, INumber<T>

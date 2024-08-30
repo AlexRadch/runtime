@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Reflection;
+using System.Text;
 using Xunit;
 
 namespace System.Globalization.Tests
@@ -310,10 +310,25 @@ namespace System.Globalization.Tests
 
         private static void TestToLower(string name, string str, string expected)
         {
-            Assert.Equal(expected, new CultureInfo(name).TextInfo.ToLower(str));
-            if (str.Length == 1)
+            var textInfo = new CultureInfo(name).TextInfo;
+
+            Assert.Equal(expected, textInfo.ToLower(str));
+
+            for (var i = 0; i < expected.Length; i++)
             {
-                Assert.Equal(expected[0], new CultureInfo(name).TextInfo.ToLower(str[0]));
+                if (!Rune.TryCreate(expected[i], out _))
+                    continue;
+
+                Assert.Equal(expected[i], textInfo.ToLower(str[i]));
+            }
+
+            for (var i = 0; i < expected.Length; i++)
+            {
+                if (!Rune.TryGetRuneAt(expected, i, out var expectedRune))
+                    continue;
+
+                Assert.True(Rune.TryGetRuneAt(str, i, out var rune));
+                Assert.Equal(expectedRune, textInfo.ToLower(rune));
             }
         }
 
@@ -441,10 +456,25 @@ namespace System.Globalization.Tests
 
         private static void TestToUpper(string name, string str, string expected)
         {
-            Assert.Equal(expected, new CultureInfo(name).TextInfo.ToUpper(str));
-            if (str.Length == 1)
+            var textInfo = new CultureInfo(name).TextInfo;
+
+            Assert.Equal(expected, textInfo.ToUpper(str));
+
+            for (var i = 0; i < expected.Length; i++)
             {
-                Assert.Equal(expected[0], new CultureInfo(name).TextInfo.ToUpper(str[0]));
+                if (!Rune.TryCreate(expected[i], out _))
+                    continue;
+
+                Assert.Equal(expected[i], textInfo.ToUpper(str[i]));
+            }
+
+            for (var i = 0; i < expected.Length; i++)
+            {
+                if (!Rune.TryGetRuneAt(expected, i, out var expectedRune))
+                    continue;
+
+                Assert.True(Rune.TryGetRuneAt(str, i, out var rune));
+                Assert.Equal(expectedRune, textInfo.ToUpper(rune));
             }
         }
 

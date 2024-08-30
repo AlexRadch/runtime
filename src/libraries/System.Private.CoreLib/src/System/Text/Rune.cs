@@ -765,7 +765,7 @@ namespace System.Text
         public bool Equals(Rune other) => this == other;
 
         /// <summary>
-        /// Indicates whether the <paramref name="left"/> <see cref="Rune"/> are equal to the <paramref name="right"/>
+        /// Indicates whether the <paramref name="left"/> <see cref="Rune"/> is equal to the <paramref name="right"/>
         /// <see cref="Rune"/>.
         /// </summary>
         /// <param name="left">
@@ -775,10 +775,69 @@ namespace System.Text
         /// The right <see cref="Rune"/> to compare with the <paramref name="left"/> <see cref="Rune"/>.
         /// </param>
         /// <returns>
-        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are equal; otherwise,
-        /// <see langword="false"/>.
+        /// <see langword="true"/> if the <paramref name="left"/> <see cref="Rune"/> equals to the
+        /// <paramref name="right"/> <see cref="Rune"/>; otherwise, <see langword="false"/>.
         /// </returns>
         public static bool Equals(Rune left, Rune right) => left == right;
+
+        /// <summary>
+        /// Indicates whether the <paramref name="left"/> <see cref="Rune"/> is equal to the <paramref name="right"/>
+        /// <see cref="Rune"/>. The <paramref name="comparisonType"/> specifies the culture, case, and sort rules used
+        /// in the comparison.
+        /// </summary>
+        /// <param name="left">
+        /// The left <see cref="Rune"/> to compare with the <paramref name="right"/> <see cref="Rune"/>.
+        /// </param>
+        /// <param name="right">
+        /// The right <see cref="Rune"/> to compare with the <paramref name="left"/> <see cref="Rune"/>.
+        /// </param>
+        /// <param name="comparisonType">Specifies the culture, case, and sort rules used in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if the <paramref name="left"/> <see cref="Rune"/> equals to the
+        /// <paramref name="right"/> <see cref="Rune"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool Equals(Rune left, Rune right, StringComparison comparisonType)
+        {
+            if (left == right)
+            {
+                string.CheckStringComparison(comparisonType);
+                return true;
+            }
+
+            if (comparisonType == StringComparison.Ordinal)
+                return left == right;
+
+            Span<char> lChars = stackalloc char[MaxUtf16CharsPerRune];
+            if (left.IsBmp)
+                (lChars = lChars.Slice(0, 1))._reference = (char)left.Value;
+            else
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)left.Value, out lChars._reference, out Unsafe.Add(ref lChars._reference, 1));
+
+            Span<char> rChars = stackalloc char[MaxUtf16CharsPerRune];
+            if (right.IsBmp)
+                (rChars = rChars.Slice(0, 1))._reference = (char)right.Value;
+            else
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)right.Value, out rChars._reference, out Unsafe.Add(ref rChars._reference, 1));
+
+            switch (comparisonType)
+            {
+                case StringComparison.CurrentCulture:
+                case StringComparison.CurrentCultureIgnoreCase:
+                    return CultureInfo.CurrentCulture.CompareInfo.Compare(lChars, rChars, string.GetCaseCompareOfComparisonCulture(comparisonType)) == 0;
+
+                case StringComparison.InvariantCulture:
+                case StringComparison.InvariantCultureIgnoreCase:
+                    return CompareInfo.Invariant.Compare(lChars, rChars, string.GetCaseCompareOfComparisonCulture(comparisonType)) == 0;
+
+                // case StringComparison.Ordinal was handled at the beginning of the method
+
+                case StringComparison.OrdinalIgnoreCase:
+                    return Ordinal.CompareStringIgnoreCase(ref lChars._reference, lChars.Length, ref rChars._reference, rChars.Length) == 0;
+
+                default:
+                    throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
+            }
+        }
 
         public override int GetHashCode() => Value;
 

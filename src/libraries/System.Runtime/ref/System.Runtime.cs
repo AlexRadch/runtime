@@ -5621,6 +5621,8 @@ namespace System
         public static string Concat<T>(System.Collections.Generic.IEnumerable<T> values) { throw null; }
         public bool Contains(char value) { throw null; }
         public bool Contains(char value, System.StringComparison comparisonType) { throw null; }
+        public bool Contains(System.Text.Rune value) { throw null; }
+        public bool Contains(System.Text.Rune value, System.StringComparison comparisonType) { throw null; }
         public bool Contains(string value) { throw null; }
         public bool Contains(string value, System.StringComparison comparisonType) { throw null; }
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
@@ -5632,6 +5634,9 @@ namespace System
         public static string Create(System.IFormatProvider? provider, System.Span<char> initialBuffer, [System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute(new string[]{ "provider", "initialBuffer"})] ref System.Runtime.CompilerServices.DefaultInterpolatedStringHandler handler) { throw null; }
         public static string Create<TState>(int length, TState state, System.Buffers.SpanAction<char, TState> action) where TState : allows ref struct { throw null; }
         public bool EndsWith(char value) { throw null; }
+        //public bool EndsWith(char value, System.StringComparison comparisonType) { throw null; }
+        //public bool EndsWith(System.Text.Rune value) { throw null; }
+        //public bool EndsWith(System.Text.Rune value, System.StringComparison comparisonType) { throw null; }
         public bool EndsWith(string value) { throw null; }
         public bool EndsWith(string value, bool ignoreCase, System.Globalization.CultureInfo? culture) { throw null; }
         public bool EndsWith(string value, System.StringComparison comparisonType) { throw null; }
@@ -5668,6 +5673,10 @@ namespace System
         public int IndexOf(char value, int startIndex) { throw null; }
         public int IndexOf(char value, int startIndex, int count) { throw null; }
         public int IndexOf(char value, System.StringComparison comparisonType) { throw null; }
+        public int IndexOf(System.Text.Rune value) { throw null; }
+        public int IndexOf(System.Text.Rune value, int startIndex) { throw null; }
+        public int IndexOf(System.Text.Rune value, int startIndex, int count) { throw null; }
+        public int IndexOf(System.Text.Rune value, System.StringComparison comparisonType) { throw null; }
         public int IndexOf(string value) { throw null; }
         public int IndexOf(string value, int startIndex) { throw null; }
         public int IndexOf(string value, int startIndex, int count) { throw null; }
@@ -5700,6 +5709,11 @@ namespace System
         public int LastIndexOf(char value) { throw null; }
         public int LastIndexOf(char value, int startIndex) { throw null; }
         public int LastIndexOf(char value, int startIndex, int count) { throw null; }
+        public int LastIndexOf(char value, StringComparison comparisonType) { throw null; }
+        public int LastIndexOf(System.Text.Rune value) { throw null; }
+        public int LastIndexOf(System.Text.Rune value, int startIndex) { throw null; }
+        public int LastIndexOf(System.Text.Rune value, int startIndex, int count) { throw null; }
+        public int LastIndexOf(System.Text.Rune value, StringComparison comparisonType) { throw null; }
         public int LastIndexOf(string value) { throw null; }
         public int LastIndexOf(string value, int startIndex) { throw null; }
         public int LastIndexOf(string value, int startIndex, int count) { throw null; }
@@ -5721,6 +5735,7 @@ namespace System
         public string Remove(int startIndex) { throw null; }
         public string Remove(int startIndex, int count) { throw null; }
         public string Replace(char oldChar, char newChar) { throw null; }
+        public string Replace(System.Text.Rune oldRune, System.Text.Rune newRune) { throw null; }
         public string Replace(string oldValue, string? newValue) { throw null; }
         public string Replace(string oldValue, string? newValue, bool ignoreCase, System.Globalization.CultureInfo? culture) { throw null; }
         public string Replace(string oldValue, string? newValue, System.StringComparison comparisonType) { throw null; }
@@ -5733,11 +5748,16 @@ namespace System
         public string[] Split(char[]? separator, int count) { throw null; }
         public string[] Split(char[]? separator, int count, System.StringSplitOptions options) { throw null; }
         public string[] Split(char[]? separator, System.StringSplitOptions options) { throw null; }
+        public string[] Split(System.Text.Rune separator, int count, System.StringSplitOptions options = System.StringSplitOptions.None) { throw null; }
+        public string[] Split(System.Text.Rune separator, System.StringSplitOptions options = System.StringSplitOptions.None) { throw null; }
         public string[] Split(string? separator, int count, System.StringSplitOptions options = System.StringSplitOptions.None) { throw null; }
         public string[] Split(string? separator, System.StringSplitOptions options = System.StringSplitOptions.None) { throw null; }
         public string[] Split(string[]? separator, int count, System.StringSplitOptions options) { throw null; }
         public string[] Split(string[]? separator, System.StringSplitOptions options) { throw null; }
         public bool StartsWith(char value) { throw null; }
+        //public bool StartsWith(char value, StringComparison comparisonType) { throw null; }
+        public bool StartsWith(System.Text.Rune value) { throw null; }
+        //public bool StartsWith(System.Text.Rune value, StringComparison comparisonType) { throw null; }
         public bool StartsWith(string value) { throw null; }
         public bool StartsWith(string value, bool ignoreCase, System.Globalization.CultureInfo? culture) { throw null; }
         public bool StartsWith(string value, System.StringComparison comparisonType) { throw null; }
@@ -5778,14 +5798,17 @@ namespace System
         public string Trim(char trimChar) { throw null; }
         public string Trim(params char[]? trimChars) { throw null; }
         public string Trim(params System.ReadOnlySpan<char> trimChars) { throw null; }
+        //public string Trim(System.Text.Rune trimRune) { throw null; }
         public string TrimEnd() { throw null; }
         public string TrimEnd(char trimChar) { throw null; }
         public string TrimEnd(params char[]? trimChars) { throw null; }
         public string TrimEnd(params System.ReadOnlySpan<char> trimChars) { throw null; }
+        //public string TrimEnd(System.Text.Rune trimRune) { throw null; }
         public string TrimStart() { throw null; }
         public string TrimStart(char trimChar) { throw null; }
         public string TrimStart(params char[]? trimChars) { throw null; }
         public string TrimStart(params System.ReadOnlySpan<char> trimChars) { throw null; }
+        //public string TrimStart(System.Text.Rune trimRune) { throw null; }
         public bool TryCopyTo(System.Span<char> destination) { throw null; }
     }
     public abstract partial class StringComparer : System.Collections.Generic.IComparer<string?>, System.Collections.Generic.IEqualityComparer<string?>, System.Collections.IComparer, System.Collections.IEqualityComparer
@@ -9791,10 +9814,12 @@ namespace System.Globalization
         public static System.Globalization.TextInfo ReadOnly(System.Globalization.TextInfo textInfo) { throw null; }
         void System.Runtime.Serialization.IDeserializationCallback.OnDeserialization(object? sender) { }
         public char ToLower(char c) { throw null; }
+        public System.Text.Rune ToLower(System.Text.Rune r) { throw null; }
         public string ToLower(string str) { throw null; }
         public override string ToString() { throw null; }
         public string ToTitleCase(string str) { throw null; }
         public char ToUpper(char c) { throw null; }
+        public System.Text.Rune ToUpper(System.Text.Rune r) { throw null; }
         public string ToUpper(string str) { throw null; }
     }
     public partial class ThaiBuddhistCalendar : System.Globalization.Calendar
@@ -15352,8 +15377,9 @@ namespace System.Text
         public static System.Buffers.OperationStatus DecodeLastFromUtf8(System.ReadOnlySpan<byte> source, out System.Text.Rune value, out int bytesConsumed) { throw null; }
         public int EncodeToUtf16(System.Span<char> destination) { throw null; }
         public int EncodeToUtf8(System.Span<byte> destination) { throw null; }
-        public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public static bool Equals(System.Text.Rune left, System.Text.Rune right) { throw null; }
+        public static bool Equals(System.Text.Rune left, System.Text.Rune right, System.StringComparison comparisonType) { throw null; }
+        public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public bool Equals(System.Text.Rune other) { throw null; }
         public override int GetHashCode() { throw null; }
         public static double GetNumericValue(System.Text.Rune value) { throw null; }

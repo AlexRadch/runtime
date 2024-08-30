@@ -103,7 +103,7 @@ namespace System
             // latter case is partially alleviated due to StringBuilder's
             // linked-list style implementation)
 
-            var strings = new string[args.Length];
+            string[] strings = new string[args.Length];
 
             int totalLength = 0;
 
@@ -1324,37 +1324,77 @@ namespace System
             return result;
         }
 
+        public string Replace(Rune oldRune, Rune newRune)
+        {
+            if (oldRune.IsBmp)
+            {
+                if (newRune.IsBmp)
+                    return Replace((char)oldRune.Value, (char)newRune.Value);
+
+                char oldChar = (char)oldRune.Value;
+                Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
+
+                return Replace(ref oldChar, 1, ref newChars._reference, Rune.MaxUtf16CharsPerRune);
+            }
+            else
+            {
+                Span<char> oldChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars._reference, out Unsafe.Add(ref oldChars._reference, 1));
+
+                if (newRune.IsBmp)
+                {
+                    char newChar = (char)newRune.Value;
+                    return Replace(ref oldChars._reference, Rune.MaxUtf16CharsPerRune, ref newChar, 1);
+                }
+
+                if (oldRune == newRune)
+                    return this;
+
+                Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
+
+                return Replace(ref oldChars._reference, Rune.MaxUtf16CharsPerRune, ref newChars._reference, Rune.MaxUtf16CharsPerRune);
+            }
+        }
+
         public string Replace(string oldValue, string? newValue)
         {
             ArgumentException.ThrowIfNullOrEmpty(oldValue);
 
             // If newValue is null, treat it as an empty string.  Callers use this to remove the oldValue.
             newValue ??= Empty;
+            return Replace(ref oldValue._firstChar, oldValue.Length, ref newValue._firstChar, newValue.Length);
+        }
+
+        private string Replace(ref char oldValue, int oldValueLength, ref char newValue, int newValueLength)
+        {
+            Debug.Assert(oldValueLength > 0);
+            Debug.Assert(newValueLength >= 0);
 
             // Track the locations of oldValue to be replaced.
             var replacementIndices = new ValueListBuilder<int>(stackalloc int[StackallocIntBufferSizeLimit]);
 
-            if (oldValue.Length == 1)
+            if (oldValueLength == 1)
             {
                 // Special-case oldValues that are a single character.  Even though there's an overload that takes
                 // a single character, its newValue is also a single character, so this overload ends up being used
                 // often to remove characters by having an empty newValue.
 
-                if (newValue.Length == 1)
+                if (newValueLength == 1)
                 {
                     // With both the oldValue and newValue being a single character, it's cheaper to just use the other overload.
-                    return Replace(oldValue[0], newValue[0]);
+                    return Replace(oldValue, newValue);
                 }
 
                 // Find all occurrences of the oldValue character.
-                char c = oldValue[0];
                 int i = 0;
 
-                if (PackedSpanHelpers.PackedIndexOfIsSupported && PackedSpanHelpers.CanUsePackedIndexOf(c))
+                if (PackedSpanHelpers.PackedIndexOfIsSupported && PackedSpanHelpers.CanUsePackedIndexOf(oldValue))
                 {
                     while (true)
                     {
-                        int pos = PackedSpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar, i), c, Length - i);
+                        int pos = PackedSpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar, i), oldValue, Length - i);
                         if (pos < 0)
                         {
                             break;
@@ -1367,7 +1407,7 @@ namespace System
                 {
                     while (true)
                     {
-                        int pos = SpanHelpers.NonPackedIndexOfChar(ref Unsafe.Add(ref _firstChar, i), c, Length - i);
+                        int pos = SpanHelpers.NonPackedIndexOfChar(ref Unsafe.Add(ref _firstChar, i), oldValue, Length - i);
                         if (pos < 0)
                         {
                             break;
@@ -1383,13 +1423,13 @@ namespace System
                 int i = 0;
                 while (true)
                 {
-                    int pos = SpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar, i), Length - i, ref oldValue._firstChar, oldValue.Length);
+                    int pos = SpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar, i), Length - i, ref oldValue, oldValueLength);
                     if (pos < 0)
                     {
                         break;
                     }
                     replacementIndices.Append(i + pos);
-                    i += pos + oldValue.Length;
+                    i += pos + oldValueLength;
                 }
             }
 
@@ -1401,18 +1441,18 @@ namespace System
 
             // Perform the replacement. String allocation and copying is in separate method to make this method faster
             // for the case where nothing needs replacing.
-            string dst = ReplaceHelper(oldValue.Length, newValue, replacementIndices.AsSpan());
+            string dst = ReplaceHelper(oldValueLength, ref newValue, newValueLength, replacementIndices.AsSpan());
 
             replacementIndices.Dispose();
 
             return dst;
         }
 
-        private string ReplaceHelper(int oldValueLength, string newValue, ReadOnlySpan<int> indices)
+        private string ReplaceHelper(int oldValueLength, ref char newValue, int newValueLength, ReadOnlySpan<int> indices)
         {
             Debug.Assert(indices.Length > 0);
 
-            long dstLength = this.Length + ((long)(newValue.Length - oldValueLength)) * indices.Length;
+            long dstLength = Length + ((long)(newValueLength - oldValueLength)) * indices.Length;
             if (dstLength > int.MaxValue)
                 ThrowHelper.ThrowOutOfMemoryException_StringTooLong();
             string dst = FastAllocateString((int)dstLength);
@@ -1436,12 +1476,12 @@ namespace System
                 thisIdx = replacementIdx + oldValueLength;
 
                 // Copy over newValue to replace the oldValue.
-                newValue.CopyTo(dstSpan.Slice(dstIdx));
-                dstIdx += newValue.Length;
+                Buffer.Memmove(ref Unsafe.Add(ref dstSpan._reference, dstIdx), ref newValue, (uint)newValueLength);
+                dstIdx += newValueLength;
             }
 
             // Copy over the final non-matching portion at the end of the string.
-            Debug.Assert(this.Length - thisIdx == dstSpan.Length - dstIdx);
+            Debug.Assert(Length - thisIdx == dstSpan.Length - dstIdx);
             this.AsSpan(thisIdx).CopyTo(dstSpan.Slice(dstIdx));
 
             return dst;
@@ -1641,6 +1681,34 @@ namespace System
         public string[] Split(char separator, int count, StringSplitOptions options = StringSplitOptions.None)
         {
             return SplitInternal(new ReadOnlySpan<char>(in separator), count, options);
+        }
+
+        public string[] Split(Rune separator, StringSplitOptions options = StringSplitOptions.None)
+        {
+            if (separator.IsBmp)
+            {
+                char c = (char)separator.Value;
+                return SplitInternal(new ReadOnlySpan<char>(in c), int.MaxValue, options);
+            }
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)separator.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            return SplitInternal(chars, int.MaxValue, options);
+        }
+
+        public string[] Split(Rune separator, int count, StringSplitOptions options = StringSplitOptions.None)
+        {
+            if (separator.IsBmp)
+            {
+                char c = (char)separator.Value;
+                return SplitInternal(new ReadOnlySpan<char>(in c), count, options);
+            }
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)separator.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            return SplitInternal(chars, count, options);
         }
 
         // Creates an array of strings by splitting this string at each

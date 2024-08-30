@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Globalization;
+using System.Linq;
 using System.Text.Unicode;
 using Xunit;
 using Xunit.Sdk;
@@ -287,6 +288,7 @@ namespace System.Text.Tests
             Assert.Equal(expected, a.Equals(b));
             Assert.Equal(expected, a.Equals((object)b));
             Assert.Equal(expected, Rune.Equals(a, b));
+            Assert.Equal(expected, Rune.Equals(a, b, StringComparison.Ordinal));
             Assert.Equal(expected, a == b);
             Assert.NotEqual(expected, a != b);
 
@@ -294,8 +296,192 @@ namespace System.Text.Tests
             Assert.Equal(expected, b.Equals(a));
             Assert.Equal(expected, b.Equals((object)a));
             Assert.Equal(expected, Rune.Equals(b, a));
+            Assert.Equal(expected, Rune.Equals(b, a, StringComparison.Ordinal));
             Assert.Equal(expected, b == a);
             Assert.NotEqual(expected, b != a);
+        }
+
+        [Theory]
+        [InlineData("\0AAAAAAAAA", "\0BBBBBBBBBBBB")]
+        [InlineData("a", "A")]
+        [InlineData("A", "a")]
+        [InlineData("aa", "aB")]
+        [InlineData("aB", "Aa")]
+        [InlineData("aB", "Ab")]
+        [InlineData("Ab", "aB")]
+        [InlineData("Hello", "hello")]
+        [InlineData("Hello", "Hello")]
+        [InlineData("HELLO", "hello")]
+        [InlineData("\u0160a", "\u0160A")]
+        [InlineData("\u0160a", "\u0160B")]
+        [InlineData("\u0160A\u0160\u0160\u0160", "\u0160b\u0160\u0160\u0160")]
+        [InlineData("\u0160b", "\u0160A")]
+        [InlineData("\u0160b\u0160\u0160\u0160", "\u0160A\u0160\u0160\u0160")]
+        [InlineData("\u0200\u0202", "\u0200\u0202")]
+        [InlineData("\u0200\u0202", "\u0200\u0202A")]
+        [InlineData("\u0200\u0202", "\u0201\u0203")]
+        [InlineData("\u1234\u5678", "\u1234\u5678")]
+        [InlineData("\u1234\u5678", "\u1234\u56789\u1234")]
+        [InlineData("\u1234\u5678", "\u1234\u5679")]
+        [InlineData("\uD801\uD801\uDC28", "\uD801\uD801\uDC00")]
+        [InlineData("\uD801\uDC28", "\uD801\uDC00")]
+        [InlineData("Hello", "Goodbye")]
+        [InlineData("Goodbye", "Hello")]
+        [InlineData("hello", "HELLO")]
+        [InlineData("A", "B")]
+        [InlineData("B", "A")]
+        [InlineData("Hello", "Yellow")]
+        [InlineData("Hello", "He" + "\u00AD" + "llo")]
+        [InlineData("Hello", "-=<Hello>=-")]
+        [InlineData("\uD83D\uDD53Hello\uD83D\uDD50", "\uD83D\uDD53Hello\uD83D\uDD54")]
+        [InlineData("Hello", "Hello123")]
+        [InlineData("Hello123", "Hello")]
+        [InlineData("---aaaaaaaaaaa", "+++aaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaxaaaaaaaaaa")]
+        [InlineData("-aaaaaaaaaaaaa", "+aaaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "axaaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "xaaaaaaaaaaaaa")]
+        [InlineData("--aaaaaaaaaaaa", "++aaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaxaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaaxaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaaaxaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaaaaxaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "+aaaaaaaaaaaaa")]
+        [InlineData("aaaaaaaaaaaaaa", "aaaaaaaaaaaaax")]
+        [InlineData("-aaaaaaaaaaaaa", "++++aaaaaaaaaa")]
+        [InlineData("abcxxxxxxxxxxxxxxxxxxxxxx", "abdxxxxxxxxxxxxxxx")]
+        [InlineData("abcdefgxxxxxxxxxxxxxxxxxx", "abcdefhxxxxxxxxxxx")]
+        [InlineData("abcdefghijkxxxxxxxxxxxxxx", "abcdefghijlxxxxxxx")]
+        [InlineData("abcdexxxxxxxxxxxxxxxxxxxx", "abcdfxxxxxxxxxxxxx")]
+        [InlineData("abcdefghixxxxxxxxxxxxxxxx", "abcdefghjxxxxxxxxx")]
+        [InlineData("A", "x")]
+        [InlineData("a", "X")]
+        [InlineData("[", "A")]
+        [InlineData("[", "a")]
+        [InlineData("\\", "A")]
+        [InlineData("\\", "a")]
+        [InlineData("]", "A")]
+        [InlineData("]", "a")]
+        [InlineData("^", "A")]
+        [InlineData("^", "a")]
+        [InlineData("_", "A")]
+        [InlineData("_", "a")]
+        [InlineData("`", "A")]
+        [InlineData("`", "a")]
+        [InlineData("\u3042", "\u30A2")]
+        [InlineData("\u3042", "\uFF71")]
+        [InlineData("\u304D\u3083", "\u30AD\u30E3")]
+        [InlineData("\u304D\u3083", "\u30AD\u3083")]
+        [InlineData("\u304D \u3083", "\u30AD\u3083")]
+        [InlineData("\u3044", "I")]
+        [InlineData("a", "\uFF41")]
+        [InlineData("ABCDE", "\uFF21\uFF22\uFF23\uFF24\uFF25")]
+        [InlineData("ABCDE", "\uFF21\uFF22\uFF23D\uFF25")]
+        [InlineData("ABCDE", "a\uFF22\uFF23D\uFF25")]
+        [InlineData("ABCDE", "\uFF41\uFF42\uFF23D\uFF25")]
+        [InlineData("\u6FA4", "\u6CA2")]
+        [InlineData("\u3070\u3073\u3076\u3079\u307C", "\u30D0\u30D3\u30D6\u30D9\u30DC")]
+        [InlineData("ABDDE", "D")]
+        [InlineData("ABCDE", "\uFF43D")]
+        [InlineData("ABCDE", "c")]
+        [InlineData("\u3060", "\u305F")]
+        [InlineData("\u3060", "\uFF80\uFF9E")]
+        [InlineData("\u3060", "\u30C0")]
+        [InlineData("\u3042", "\u30A1")]
+        [InlineData("", "'")]
+        [InlineData("\u00D3\u00D4", "\u00F3\u00F4")]
+        [InlineData("\U00010400", "\U00010428")]
+        [InlineData("\u00D3\u00D4G", "\u00F3\u00F4")]
+        [InlineData("\U00010400G", "\U00010428")]
+        [InlineData("\u00D3\u00D4", "\u00F3\u00F4G")]
+        [InlineData("\U00010400", "\U00010428G")]
+        // Hungarian
+        [InlineData("dzsdzs", "ddzs")]
+        // Turkish
+        [InlineData("i", "I")]
+        [InlineData("i", "\u0130")]
+        [InlineData("\u00C0", "A\u0300")]
+        [InlineData("FooBar", "Foo\u0400Bar")]
+        [InlineData("FooBA\u0300R", "FooB\u00C0R")]
+        [InlineData("Test's", "Tests")]
+        // Spanish
+        [InlineData("llegar", "lugar")]
+        // Surrogates
+        [InlineData("Hello\uFE6A", "Hello\U0001F601")]
+        [InlineData("Hello\U0001F601", "Hello\uFE6A")]
+        [InlineData("\uDBFF", "\uD800\uDC00")]
+        [InlineData("\uD800\uDC00", "\uDBFF")]
+        [InlineData("abcdefg\uDBFF", "abcdefg\uD800\uDC00")]
+        public static void Equals_StringComparison(string s1, string s2)
+        {
+            var len = Math.Min(s1.Length, s2.Length);
+            for(var i = 0; i < len; i++ )
+            {
+                if (Rune.TryGetRuneAt(s1, i, out var a) && Rune.TryGetRuneAt(s2, i, out var b))
+                {
+                    {
+                        var expected = string.Equals(a.ToString(), b.ToString());
+
+                        Assert.Equal(expected, Object.Equals(a, b));
+                        Assert.Equal(expected, a.Equals(b));
+                        Assert.Equal(expected, a.Equals((object)b));
+                        Assert.Equal(expected, Rune.Equals(a, b));
+                        Assert.Equal(expected, Rune.Equals(a, b, StringComparison.Ordinal));
+                        Assert.Equal(expected, a == b);
+                        Assert.NotEqual(expected, a != b);
+
+                        Assert.Equal(expected, Object.Equals(b, a));
+                        Assert.Equal(expected, b.Equals(a));
+                        Assert.Equal(expected, b.Equals((object)a));
+                        Assert.Equal(expected, Rune.Equals(b, a));
+                        Assert.Equal(expected, Rune.Equals(b, a, StringComparison.Ordinal));
+                        Assert.Equal(expected, b == a);
+                        Assert.NotEqual(expected, b != a);
+                    }
+
+                    foreach (var comparison in Enum.GetValues(typeof(StringComparison)).Cast<StringComparison>())
+                    {
+                        var expected = string.Equals(a.ToString(), b.ToString(), comparison);
+                        Assert.Equal(expected, Rune.Equals(a, b, comparison));
+                        Assert.Equal(expected, Rune.Equals(b, a, comparison));
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public static void Equals_StringComparison_AsciiOptimizations()
+        {
+            for (int i = 0; i < 128; i++)
+            {
+                for (int j = 0; j < 128; j++)
+                {
+                    bool expectedEqualOrdinal = i == j;
+                    bool expectedEqualOrdinalIgnoreCase = (i == j) || ((i | 0x20) >= 'a' && (i | 0x20) <= 'z' && ((i | 0x20) == (j | 0x20)));
+
+                    var iRune = new Rune((char)i);
+                    var jRune = new Rune((char)j);
+
+                    Assert.Equal(expectedEqualOrdinal, Rune.Equals(iRune, jRune, StringComparison.Ordinal));
+                    Assert.Equal(expectedEqualOrdinal, Rune.Equals(jRune, iRune, StringComparison.Ordinal));
+                    Assert.Equal(expectedEqualOrdinalIgnoreCase, Rune.Equals(iRune, jRune, StringComparison.OrdinalIgnoreCase));
+                    Assert.Equal(expectedEqualOrdinalIgnoreCase, Rune.Equals(jRune, iRune, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(StringComparison.CurrentCulture - 1)]
+        [InlineData(StringComparison.OrdinalIgnoreCase + 1)]
+        public static void Equals_StringComparison_Invalid(StringComparison comparisonType)
+        {
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals((Rune)'a', (Rune)'a', comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals((Rune)'a', (Rune)'b', comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals((Rune)'a', Rune.GetRuneAt("🤣", 0), comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals(Rune.GetRuneAt("🤣", 0), (Rune)'a', comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals(Rune.GetRuneAt("🤣", 0), Rune.GetRuneAt("🤣", 0), comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => Rune.Equals(Rune.GetRuneAt("🤣", 0), Rune.GetRuneAt("😂", 0), comparisonType));
         }
 
         [Theory]

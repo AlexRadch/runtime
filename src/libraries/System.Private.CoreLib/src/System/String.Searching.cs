@@ -1,8 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace System
 {
@@ -41,6 +43,24 @@ namespace System
 #pragma warning disable CA2249 // Consider using 'string.Contains' instead of 'string.IndexOf'... this is the implementation of Contains!
             return IndexOf(value, comparisonType) != -1;
 #pragma warning restore CA2249
+        }
+
+        public bool Contains(Rune value)
+        {
+            if (value.IsBmp)
+            {
+                return Contains((char)value.Value);
+            }
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            return SpanHelpers.IndexOf(ref _firstChar, Length, ref chars._reference, Rune.MaxUtf16CharsPerRune) >= 0;
+        }
+
+        public bool Contains(Rune value, StringComparison comparisonType)
+        {
+            return IndexOf(value, comparisonType) >= 0;
         }
 
         // Returns the index of the first occurrence of a specified character in the current instance.
@@ -98,6 +118,66 @@ namespace System
             int result = SpanHelpers.IndexOfChar(ref Unsafe.Add(ref _firstChar, startIndex), value, count);
 
             return result < 0 ? result : result + startIndex;
+        }
+
+        public int IndexOf(Rune value)
+        {
+            if (value.IsBmp)
+            {
+                return IndexOf((char)value.Value, Length);
+            }
+
+            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+
+        }
+
+        public int IndexOf(Rune value, int startIndex)
+        {
+            return IndexOf(value, startIndex, Length - startIndex);
+        }
+
+        public int IndexOf(Rune value, int startIndex, int count)
+        {
+            if ((uint)startIndex > (uint)Length)
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLessOrEqual);
+            }
+
+            if ((uint)count > (uint)(Length - startIndex))
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
+            }
+
+            if (value.IsBmp)
+            {
+                int result = SpanHelpers.IndexOfChar(ref Unsafe.Add(ref _firstChar, startIndex), (char)value.Value, count);
+                return result < 0 ? result : result + startIndex;
+            }
+
+            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+        }
+
+        public int IndexOf(Rune value, StringComparison comparisonType)
+        {
+            if (value.IsBmp)
+            {
+                return IndexOf((char)value.Value, comparisonType);
+            }
+
+            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, comparisonType);
+        }
+
+        private int IndexOfSupplementaryPlaneScalar(uint value, int startIndex, int count, StringComparison comparisonType)
+        {
+            Debug.Assert((uint)startIndex <= (uint)Length);
+            Debug.Assert((uint)count <= (uint)(Length - startIndex));
+            UnicodeDebug.AssertIsValidSupplementaryPlaneScalar(value);
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            ReadOnlySpan<char> source = new ReadOnlySpan<char>(ref Unsafe.Add(ref _firstChar, (nint)(uint)startIndex /* force zero-extension */), count);
+            return MemoryExtensions.IndexOf(source, chars, comparisonType);
         }
 
         // Returns the index of the first occurrence of any specified character in the current instance.
@@ -274,6 +354,35 @@ namespace System
             return LastIndexOf(value, startIndex, startIndex + 1);
         }
 
+        public int LastIndexOf(char value, StringComparison comparisonType)
+        {
+            return comparisonType switch
+            {
+                StringComparison.CurrentCulture or StringComparison.CurrentCultureIgnoreCase => CultureInfo.CurrentCulture.CompareInfo.LastIndexOf(this, value, GetCaseCompareOfComparisonCulture(comparisonType)),
+                StringComparison.InvariantCulture or StringComparison.InvariantCultureIgnoreCase => CompareInfo.Invariant.LastIndexOf(this, value, GetCaseCompareOfComparisonCulture(comparisonType)),
+                StringComparison.Ordinal => LastIndexOf(value),
+                StringComparison.OrdinalIgnoreCase => LastIndexOfCharOrdinalIgnoreCase(value),
+                _ => throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType)),
+            };
+        }
+
+        private int LastIndexOfCharOrdinalIgnoreCase(char value)
+        {
+            if (!char.IsAscii(value))
+            {
+                return Ordinal.LastIndexOfOrdinalIgnoreCase(this, new ReadOnlySpan<char>(in value));
+            }
+
+            if (char.IsAsciiLetter(value))
+            {
+                char valueLc = (char)(value | 0x20);
+                char valueUc = (char)(value & ~0x20);
+                return SpanHelpers.LastIndexOfAnyChar(ref _firstChar, valueLc, valueUc, Length);
+            }
+
+            return SpanHelpers.LastIndexOfChar(ref _firstChar, value, Length);
+        }
+
         public unsafe int LastIndexOf(char value, int startIndex, int count)
         {
             if (Length == 0)
@@ -295,6 +404,66 @@ namespace System
             int result = SpanHelpers.LastIndexOfValueType(ref Unsafe.As<char, short>(ref Unsafe.Add(ref _firstChar, startSearchAt)), (short)value, count);
 
             return result < 0 ? result : result + startSearchAt;
+        }
+
+        public int LastIndexOf(Rune value)
+        {
+            if (value.IsBmp)
+            {
+                return SpanHelpers.LastIndexOf(ref _firstChar, (char)value.Value, Length);
+            }
+
+            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+
+        }
+
+        public int LastIndexOf(Rune value, int startIndex)
+        {
+            return LastIndexOf(value, startIndex, Length - startIndex);
+        }
+
+        public int LastIndexOf(Rune value, int startIndex, int count)
+        {
+            if ((uint)startIndex > (uint)Length)
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLessOrEqual);
+            }
+
+            if ((uint)count > (uint)(Length - startIndex))
+            {
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
+            }
+
+            if (value.IsBmp)
+            {
+                int result = SpanHelpers.LastIndexOfChar(ref Unsafe.Add(ref _firstChar, startIndex), (char)value.Value, count);
+                return result < 0 ? result : result + startIndex;
+            }
+
+            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+        }
+
+        public int LastIndexOf(Rune value, StringComparison comparisonType)
+        {
+            if (value.IsBmp)
+            {
+                return LastIndexOf((char)value.Value, comparisonType);
+            }
+
+            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, comparisonType);
+        }
+
+        private int LastIndexOfSupplementaryPlaneScalar(uint value, int startIndex, int count, StringComparison comparisonType)
+        {
+            Debug.Assert((uint)startIndex <= (uint)Length);
+            Debug.Assert((uint)count <= (uint)(Length - startIndex));
+            UnicodeDebug.AssertIsValidSupplementaryPlaneScalar(value);
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            ReadOnlySpan<char> source = new ReadOnlySpan<char>(ref Unsafe.Add(ref _firstChar, (nint)(uint)startIndex /* force zero-extension */), count);
+            return MemoryExtensions.LastIndexOf(source, chars, comparisonType);
         }
 
         // Returns the index of the last occurrence of any specified character in the current instance.
