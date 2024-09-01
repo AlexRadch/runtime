@@ -191,6 +191,11 @@ namespace System.Globalization
             return ChangeCaseCommon<ToLowerConversion>(str);
         }
 
+        /// <summary>
+        /// Converts the <paramref name="r"/> <see cref="Rune"/> to lowercase.
+        /// </summary>
+        /// <param name="r">The <see cref="Rune"/> to convert to lowercase.</param>
+        /// <returns>The <paramref name="r"/> <see cref="Rune"/> converted to lowercase.</returns>
         public Rune ToLower(Rune r)
         {
 #if TARGET_BROWSER
@@ -522,6 +527,11 @@ namespace System.Globalization
             return ChangeCaseCommon<ToUpperConversion>(str);
         }
 
+        /// <summary>
+        /// Converts the <paramref name="r"/> <see cref="Rune"/> to uppercase.
+        /// </summary>
+        /// <param name="r">The <see cref="Rune"/> to convert to uppercase.</param>
+        /// <returns>The <paramref name="r"/> <see cref="Rune"/> converted to uppercase.</returns>
         public Rune ToUpper(Rune r)
         {
 #if TARGET_BROWSER

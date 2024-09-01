@@ -5634,9 +5634,9 @@ namespace System
         public static string Create(System.IFormatProvider? provider, System.Span<char> initialBuffer, [System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute(new string[]{ "provider", "initialBuffer"})] ref System.Runtime.CompilerServices.DefaultInterpolatedStringHandler handler) { throw null; }
         public static string Create<TState>(int length, TState state, System.Buffers.SpanAction<char, TState> action) where TState : allows ref struct { throw null; }
         public bool EndsWith(char value) { throw null; }
-        //public bool EndsWith(char value, System.StringComparison comparisonType) { throw null; }
-        //public bool EndsWith(System.Text.Rune value) { throw null; }
-        //public bool EndsWith(System.Text.Rune value, System.StringComparison comparisonType) { throw null; }
+        public bool EndsWith(char value, System.StringComparison comparisonType) { throw null; }
+        public bool EndsWith(System.Text.Rune value) { throw null; }
+        public bool EndsWith(System.Text.Rune value, System.StringComparison comparisonType) { throw null; }
         public bool EndsWith(string value) { throw null; }
         public bool EndsWith(string value, bool ignoreCase, System.Globalization.CultureInfo? culture) { throw null; }
         public bool EndsWith(string value, System.StringComparison comparisonType) { throw null; }
@@ -5755,9 +5755,9 @@ namespace System
         public string[] Split(string[]? separator, int count, System.StringSplitOptions options) { throw null; }
         public string[] Split(string[]? separator, System.StringSplitOptions options) { throw null; }
         public bool StartsWith(char value) { throw null; }
-        //public bool StartsWith(char value, StringComparison comparisonType) { throw null; }
+        public bool StartsWith(char value, StringComparison comparisonType) { throw null; }
         public bool StartsWith(System.Text.Rune value) { throw null; }
-        //public bool StartsWith(System.Text.Rune value, StringComparison comparisonType) { throw null; }
+        public bool StartsWith(System.Text.Rune value, StringComparison comparisonType) { throw null; }
         public bool StartsWith(string value) { throw null; }
         public bool StartsWith(string value, bool ignoreCase, System.Globalization.CultureInfo? culture) { throw null; }
         public bool StartsWith(string value, System.StringComparison comparisonType) { throw null; }
@@ -5798,17 +5798,17 @@ namespace System
         public string Trim(char trimChar) { throw null; }
         public string Trim(params char[]? trimChars) { throw null; }
         public string Trim(params System.ReadOnlySpan<char> trimChars) { throw null; }
-        //public string Trim(System.Text.Rune trimRune) { throw null; }
+        public string Trim(System.Text.Rune trimRune) { throw null; }
         public string TrimEnd() { throw null; }
         public string TrimEnd(char trimChar) { throw null; }
         public string TrimEnd(params char[]? trimChars) { throw null; }
         public string TrimEnd(params System.ReadOnlySpan<char> trimChars) { throw null; }
-        //public string TrimEnd(System.Text.Rune trimRune) { throw null; }
+        public string TrimEnd(System.Text.Rune trimRune) { throw null; }
         public string TrimStart() { throw null; }
         public string TrimStart(char trimChar) { throw null; }
         public string TrimStart(params char[]? trimChars) { throw null; }
         public string TrimStart(params System.ReadOnlySpan<char> trimChars) { throw null; }
-        //public string TrimStart(System.Text.Rune trimRune) { throw null; }
+        public string TrimStart(System.Text.Rune trimRune) { throw null; }
         public bool TryCopyTo(System.Span<char> destination) { throw null; }
     }
     public abstract partial class StringComparer : System.Collections.Generic.IComparer<string?>, System.Collections.Generic.IEqualityComparer<string?>, System.Collections.IComparer, System.Collections.IEqualityComparer

@@ -45,6 +45,15 @@ namespace System
 #pragma warning restore CA2249
         }
 
+        /// <summary>
+        /// Indicating whether the <paramref name="value"/> <see cref="Rune"/> occurs within this
+        /// <see langword="string"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek within this <see langword="string"/>.</param>
+        /// <returns>
+        /// <see langword="true"/> if the <paramref name="value"/> <see cref="Rune"/> occurs within this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.
+        /// </returns>
         public bool Contains(Rune value)
         {
             if (value.IsBmp)
@@ -58,6 +67,23 @@ namespace System
             return SpanHelpers.IndexOf(ref _firstChar, Length, ref chars._reference, Rune.MaxUtf16CharsPerRune) >= 0;
         }
 
+        /// <summary>
+        /// Indicating whether the <paramref name="value"/> <see cref="Rune"/> occurs within this
+        /// <see langword="string"/>, using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// A <see cref="Rune"/> to seek within this <see langword="string"/>, using the
+        /// <paramref name="comparisonType"/> rules.
+        /// </param>
+        /// <param name="comparisonType">A <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if the <paramref name="value"/> <see cref="Rune"/> occurs within this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.<br/>
+        /// The <paramref name="comparisonType"/> rules are used in the comparison.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
         public bool Contains(Rune value, StringComparison comparisonType)
         {
             return IndexOf(value, comparisonType) >= 0;
@@ -120,64 +146,113 @@ namespace System
             return result < 0 ? result : result + startIndex;
         }
 
+        /// <summary>
+        /// Reports the zero-based index of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <returns>
+        /// The zero-based index position of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
         public int IndexOf(Rune value)
         {
             if (value.IsBmp)
-            {
-                return IndexOf((char)value.Value, Length);
-            }
+                return IndexOf((char)value.Value);
 
-            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
-
-        }
-
-        public int IndexOf(Rune value, int startIndex)
-        {
-            return IndexOf(value, startIndex, Length - startIndex);
-        }
-
-        public int IndexOf(Rune value, int startIndex, int count)
-        {
-            if ((uint)startIndex > (uint)Length)
-            {
-                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLessOrEqual);
-            }
-
-            if ((uint)count > (uint)(Length - startIndex))
-            {
-                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
-            }
-
-            if (value.IsBmp)
-            {
-                int result = SpanHelpers.IndexOfChar(ref Unsafe.Add(ref _firstChar, startIndex), (char)value.Value, count);
-                return result < 0 ? result : result + startIndex;
-            }
-
-            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
-        }
-
-        public int IndexOf(Rune value, StringComparison comparisonType)
-        {
-            if (value.IsBmp)
-            {
-                return IndexOf((char)value.Value, comparisonType);
-            }
-
-            return IndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, comparisonType);
-        }
-
-        private int IndexOfSupplementaryPlaneScalar(uint value, int startIndex, int count, StringComparison comparisonType)
-        {
-            Debug.Assert((uint)startIndex <= (uint)Length);
-            Debug.Assert((uint)count <= (uint)(Length - startIndex));
-            UnicodeDebug.AssertIsValidSupplementaryPlaneScalar(value);
+            if (Length < 2)
+                return -1;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            ReadOnlySpan<char> source = new ReadOnlySpan<char>(ref Unsafe.Add(ref _firstChar, (nint)(uint)startIndex /* force zero-extension */), count);
-            return MemoryExtensions.IndexOf(source, chars, comparisonType);
+            return SpanHelpers.IndexOf(_firstChar, Length, chars._reference, Rune.MaxUtf16CharsPerRune);
+        }
+
+        /// <summary>
+        /// Reports the zero-based index of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>. The search starts at the <paramref name="startIndex"/> character position.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <param name="startIndex">The search starting position.</param>
+        /// <returns>
+        /// The zero-based index position of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The <paramref name="startIndex"/> is less than zero or greater than the <see cref="Length"/> of this
+        /// <see langword="string"/>.
+        /// </exception>
+        public int IndexOf(Rune value, int startIndex) => IndexOf(value, startIndex, Length - startIndex);
+
+        /// <summary>
+        /// Reports the zero-based index of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>. The search starts at the <paramref name="startIndex"/> character position
+        /// and examines the <paramref name="count"/> number of character positions.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <param name="startIndex">The search starting position.</param>
+        /// <param name="count">The number of character positions to examine.</param>
+        /// <returns>
+        /// The zero-based index position of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The <paramref name="startIndex"/> or the <paramref name="count"/> is negative.
+        /// <br>-or-</br>
+        /// The <paramref name="startIndex"/> is greater than the <see cref="Length"/> of this
+        /// <see langword="string"/>.
+        /// <br>-or-</br>
+        /// The <paramref name="count"/> is greater than the <see cref="Length"/> of this <see langword="string"/>
+        /// minus <paramref name="startIndex"/>.
+        /// </exception>
+        public int IndexOf(Rune value, int startIndex, int count)
+        {
+            if (value.IsBmp)
+                return IndexOf((char)value.Value, startIndex, count);
+
+            if ((uint)startIndex > (uint)Length)
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLessOrEqual);
+
+            if ((uint)count > (uint)(Length - startIndex))
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
+
+            if (count < 2)
+                return -1;
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            int result = SpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar + startIndex), count, chars._reference, Rune.MaxUtf16CharsPerRune);
+
+            return result < 0 ? result : result + startIndex;
+        }
+
+        /// <summary>
+        /// Reports the zero-based index of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/> using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// A <see cref="Rune"/> to seek in this <see langword="string"/> using the <paramref name="comparisonType"/>
+        /// rules.
+        /// </param>
+        /// <param name="comparisonType">A <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// The zero-based index position of the first occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
+        public int IndexOf(Rune value, StringComparison comparisonType)
+        {
+            if (value.IsBmp)
+                return IndexOf((char)value.Value, comparisonType);
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            return MemoryExtensions.IndexOf(AsSpan(), chars, comparisonType);
         }
 
         // Returns the index of the first occurrence of any specified character in the current instance.
@@ -346,8 +421,7 @@ namespace System
         // The search starts at startIndex and runs backwards to startIndex - count + 1.
         // The character at position startIndex is included in the search.  startIndex is the larger
         // index within the string.
-        public int LastIndexOf(char value)
-            => SpanHelpers.LastIndexOfValueType(ref Unsafe.As<char, short>(ref _firstChar), (short)value, Length);
+        public int LastIndexOf(char value) => SpanHelpers.LastIndexOfChar(ref _firstChar, value, Length);
 
         public int LastIndexOf(char value, int startIndex)
         {
@@ -401,69 +475,112 @@ namespace System
             }
 
             int startSearchAt = startIndex + 1 - count;
-            int result = SpanHelpers.LastIndexOfValueType(ref Unsafe.As<char, short>(ref Unsafe.Add(ref _firstChar, startSearchAt)), (short)value, count);
+            int result = SpanHelpers.LastIndexOfChar(ref Unsafe.Add(ref _firstChar, startSearchAt), value, count);
 
             return result < 0 ? result : result + startSearchAt;
         }
 
+        /// <summary>
+        /// Reports the zero-based index of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <returns>
+        /// The zero-based index position of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
         public int LastIndexOf(Rune value)
         {
             if (value.IsBmp)
-            {
-                return SpanHelpers.LastIndexOf(ref _firstChar, (char)value.Value, Length);
-            }
+                return LastIndexOf((char)value.Value);
 
-            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+            if (Length < 2)
+                return -1;
 
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            return SpanHelpers.LastIndexOf(ref _firstChar, Length, ref chars._reference, Rune.MaxUtf16CharsPerRune);
         }
 
-        public int LastIndexOf(Rune value, int startIndex)
-        {
-            return LastIndexOf(value, startIndex, Length - startIndex);
-        }
+        /// <summary>
+        /// Reports the zero-based index of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>. The search starts at the <paramref name="startIndex"/> character position
+        /// and proceeds backward toward the beginning of the <see langword="string"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <param name="startIndex">
+        /// The search starting position. The search proceeds from <paramref name="startIndex"/> toward the beginning
+        /// of this <see langword="string"/>.
+        /// </param>
+        /// <returns>
+        /// The zero-based index position of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The current <see langword="string"/> does not equal <see cref="Empty"/>, and <paramref name="startIndex"/>
+        /// is less than zero or greater than or equal to the <see cref="Length"/> of this <see langword="string"/>.
+        /// </exception>
+        public int LastIndexOf(Rune value, int startIndex) => LastIndexOf(value, startIndex, startIndex + 1);
 
+        /// <summary>
+        /// Reports the zero-based index of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> in
+        /// this <see langword="string"/>. The search starts at the <paramref name="startIndex"/> character position
+        /// and proceeds backward toward the beginning of the <see langword="string"/> for the <paramref name="count"/>
+        /// number of character positions.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to seek.</param>
+        /// <param name="startIndex">
+        /// The search starting position. The search proceeds from <paramref name="startIndex"/> toward the beginning
+        /// of this <see langword="string"/> for the <paramref name="count"/> number of character positions.
+        /// </param>
+        /// <param name="count">The number of character positions to examine.</param>
+        /// <returns>
+        /// The zero-based index position of the last occurrence of the <paramref name="value"/> <see cref="Rune"/> if
+        /// it is found, or -1 if it is not found.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The current <see langword="string"/> does not equal <see cref="Empty"/>, and <paramref name="startIndex"/>
+        /// is less than zero or greater than or equal to the <see cref="Length"/> of this <see langword="string"/>.
+        /// <br/>-or-<br/>
+        /// The current <see langword="string"/> does not equal <see cref="Empty"/>, and <paramref name="startIndex"/>
+        /// - <paramref name="count"/> + 1 is less than zero.
+        /// </exception>
         public int LastIndexOf(Rune value, int startIndex, int count)
         {
-            if ((uint)startIndex > (uint)Length)
-            {
-                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLessOrEqual);
-            }
-
-            if ((uint)count > (uint)(Length - startIndex))
-            {
-                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
-            }
-
             if (value.IsBmp)
-            {
-                int result = SpanHelpers.LastIndexOfChar(ref Unsafe.Add(ref _firstChar, startIndex), (char)value.Value, count);
-                return result < 0 ? result : result + startIndex;
-            }
+                return LastIndexOf((char)value.Value, startIndex, count);
 
-            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, StringComparison.CurrentCulture);
+            if (Length == 0)
+                return -1;
+
+            if ((uint)startIndex >= (uint)Length)
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.startIndex, ExceptionResource.ArgumentOutOfRange_IndexMustBeLess);
+
+            if ((uint)count > (uint)startIndex + 1)
+                ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
+
+            if (count < 2)
+                return -1;
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            int startSearchAt = startIndex + 1 - count;
+            int result = SpanHelpers.LastIndexOf(ref Unsafe.Add(ref _firstChar, startSearchAt), count, ref chars._reference, Rune.MaxUtf16CharsPerRune);
+
+            return result < 0 ? result : result + startSearchAt;
         }
 
         public int LastIndexOf(Rune value, StringComparison comparisonType)
         {
             if (value.IsBmp)
-            {
                 return LastIndexOf((char)value.Value, comparisonType);
-            }
-
-            return LastIndexOfSupplementaryPlaneScalar((uint)value.Value, 0, Length, comparisonType);
-        }
-
-        private int LastIndexOfSupplementaryPlaneScalar(uint value, int startIndex, int count, StringComparison comparisonType)
-        {
-            Debug.Assert((uint)startIndex <= (uint)Length);
-            Debug.Assert((uint)count <= (uint)(Length - startIndex));
-            UnicodeDebug.AssertIsValidSupplementaryPlaneScalar(value);
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
-            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            ReadOnlySpan<char> source = new ReadOnlySpan<char>(ref Unsafe.Add(ref _firstChar, (nint)(uint)startIndex /* force zero-extension */), count);
-            return MemoryExtensions.LastIndexOf(source, chars, comparisonType);
+            return MemoryExtensions.LastIndexOf(this.AsSpan(), chars, comparisonType);
         }
 
         // Returns the index of the last occurrence of any specified character in the current instance.

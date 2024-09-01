@@ -1324,6 +1324,23 @@ namespace System
             return result;
         }
 
+        /// <summary>
+        /// Returns a new <see langword="string"/> in which all occurrences of the <paramref name="oldRune"/>
+        /// <see cref="Rune"/> in this <see langword="string"/> are replaced with <paramref name="newRune"/>
+        /// <see cref="Rune"/>.
+        /// </summary>
+        /// <param name="oldRune">
+        /// A <see cref="Rune"/> to be replaced with the <paramref name="newRune"/> <see cref="Rune"/>.
+        /// </param>
+        /// <param name="newRune">
+        /// A <see cref="Rune"/> to replace all occurrences of <paramref name="oldRune"/> <see cref="Rune"/>.
+        /// </param>
+        /// <returns>
+        /// A <see langword="string"/> that is equivalent to this <see langword="string"/> except that all instances of
+        /// <paramref name="oldRune"/> <see cref="Rune"/> are replaced with <paramref name="newRune"/>
+        /// <see cref="Rune"/>. If <paramref name="oldRune"/> <see cref="Rune"/> is not found in the current
+        /// <see langword="string"/>, the method returns the current <see langword="string"/> unchanged.
+        /// </returns>
         public string Replace(Rune oldRune, Rune newRune)
         {
             if (oldRune.IsBmp)
@@ -1683,6 +1700,26 @@ namespace System
             return SplitInternal(new ReadOnlySpan<char>(in separator), count, options);
         }
 
+        /// <summary>
+        /// Splits this <see langword="string"/> into the <see langword="string">substrings</see> based on the
+        /// <paramref name="separator"/> delimiting <see cref="Rune"/> and, optionally, <paramref name="options"/>.
+        /// </summary>
+        /// <param name="separator">
+        /// A <see cref="Rune"/> that delimits the <see langword="string">substrings</see> in this
+        /// <see langword="string"/>.
+        /// </param>
+        /// <param name="options">
+        /// A bitwise combination of the <see cref="StringSplitOptions"/> values that specifies whether to
+        /// <see cref="Trim()"/> <see langword="string">substrings</see> and include <see cref="Empty"/>
+        /// <see langword="string">substrings</see>.
+        /// </param>
+        /// <returns>
+        /// An array that contains the <see langword="string">substrings</see> from this <see langword="string"/> that
+        /// are delimited by <paramref name="separator"/> <see cref="Rune"/>.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="options"/> is not one of the <see cref="StringSplitOptions"/> values.
+        /// </exception>
         public string[] Split(Rune separator, StringSplitOptions options = StringSplitOptions.None)
         {
             if (separator.IsBmp)
@@ -1697,6 +1734,39 @@ namespace System
             return SplitInternal(chars, int.MaxValue, options);
         }
 
+        /// <summary>
+        /// Splits this <see langword="string"/> into the maximum <paramref name="count"/> number of the
+        /// <see langword="string">substrings</see> based on the <paramref name="separator"/> delimiting
+        /// <see cref="Rune"/> and, optionally, <paramref name="options"/>.
+        /// </summary>
+        /// <param name="separator">
+        /// A <see cref="Rune"/> that delimits the <see langword="string">substrings</see> in this
+        /// <see langword="string"/>.
+        /// </param>
+        /// <param name="count">
+        /// The maximum number of the <see langword="string">substrings</see> expected in the result array.
+        /// </param>
+        /// <param name="options">
+        /// A bitwise combination of the <see cref="StringSplitOptions"/> values that specifies whether to
+        /// <see cref="Trim()"/> <see langword="string">substrings</see> and include <see cref="Empty"/>
+        /// <see langword="string">substrings</see>.
+        /// </param>
+        /// <returns>
+        /// <para>
+        /// An array that contains at most <paramref name="count"/> <see langword="string">substrings</see> from this
+        /// <see langword="string"/> that are delimited by <paramref name="separator"/> <see cref="Rune"/>.
+        /// </para>
+        /// <para>
+        /// If this <see langword="string"/> has already been split <paramref name="count"/> - 1 times, but the end of
+        /// this <see langword="string"/> has not been reached, then the last <see langword="string"/> in the returned
+        /// array will contain this <see langword="string">string's</see> remaining trailing
+        /// <see langword="string">substring</see>, untouched.
+        /// </para>
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">The <paramref name="count"/> is less than zero.</exception>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="options"/> is not one of the <see cref="StringSplitOptions"/> values.
+        /// </exception>
         public string[] Split(Rune separator, int count, StringSplitOptions options = StringSplitOptions.None)
         {
             if (separator.IsBmp)
@@ -2450,6 +2520,33 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Removes all leading and trailing <paramref name="trimRune"/> <see cref="Rune">runes</see> from the this
+        /// <see langword="string"/>.
+        /// </summary>
+        /// <param name="trimRune">
+        /// A <see cref="Rune"/> to remove from the start and end of this <see langword="string"/>.
+        /// </param>
+        /// <returns>
+        /// A new <see langword="string"/> that remains after all <paramref name="trimRune"/>
+        /// <see cref="Rune">runes</see> are removed from the start and end of the this <see langword="string"/>. If no
+        /// <see cref="Rune">runes</see> can be trimmed from this <see langword="string"/>, the method returns this
+        /// <see langword="string"/> unchanged.
+        /// </returns>
+        public unsafe string Trim(Rune trimRune)
+        {
+            if (trimRune.IsBmp)
+                return Trim((char)trimRune.Value);
+
+            if (Length < 2)
+                return this;
+
+            Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)trimRune.Value, out runeChars._reference, out Unsafe.Add(ref runeChars._reference, 1));
+
+            return TrimTwoCharsStringHelper(&runeChars._reference, TrimType.Both);
+        }
+
         // Removes a set of characters from the beginning of this string.
         public string TrimStart() => TrimWhiteSpaceHelper(TrimType.Head);
 
@@ -2491,6 +2588,33 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Removes all leading <paramref name="trimRune"/> <see cref="Rune">runes</see> from the this
+        /// <see langword="string"/>.
+        /// </summary>
+        /// <param name="trimRune">
+        /// A <see cref="Rune"/> to remove from the start of this <see langword="string"/>.
+        /// </param>
+        /// <returns>
+        /// A new <see langword="string"/> that remains after all <paramref name="trimRune"/>
+        /// <see cref="Rune">runes</see> are removed from the start of the this <see langword="string"/>. If no
+        /// <see cref="Rune">runes</see>can be trimmed from this <see langword="string"/>, the method returns this
+        /// <see langword="string"/> unchanged.
+        /// </returns>
+        public unsafe string TrimStart(Rune trimRune)
+        {
+            if (trimRune.IsBmp)
+                return TrimStart((char)trimRune.Value);
+
+            if (Length < 2)
+                return this;
+
+            Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)trimRune.Value, out runeChars._reference, out Unsafe.Add(ref runeChars._reference, 1));
+
+            return TrimTwoCharsStringHelper(&runeChars._reference, TrimType.Head);
+        }
+
         // Removes a set of characters from the end of this string.
         public string TrimEnd() => TrimWhiteSpaceHelper(TrimType.Tail);
 
@@ -2530,6 +2654,33 @@ namespace System
             {
                 return TrimHelper(pTrimChars, trimChars.Length, TrimType.Tail);
             }
+        }
+
+        /// <summary>
+        /// Removes all trailing <paramref name="trimRune"/> <see cref="Rune">runes</see> from the this
+        /// <see langword="string"/>.
+        /// </summary>
+        /// <param name="trimRune">
+        /// A <see cref="Rune"/> to remove from the end of this <see langword="string"/>.
+        /// </param>
+        /// <returns>
+        /// A new <see langword="string"/> that remains after all <paramref name="trimRune"/>
+        /// <see cref="Rune">runes</see> are removed from the end of the this <see langword="string"/>. If no
+        /// <see cref="Rune">runes</see> can be trimmed from this <see langword="string"/>, the method returns this
+        /// <see langword="string"/> unchanged.
+        /// </returns>
+        public unsafe string TrimEnd(Rune trimRune)
+        {
+            if (trimRune.IsBmp)
+                return TrimEnd((char)trimRune.Value);
+
+            if (Length < 2)
+                return this;
+
+            Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)trimRune.Value, out runeChars._reference, out Unsafe.Add(ref runeChars._reference, 1));
+
+            return TrimTwoCharsStringHelper(&runeChars._reference, TrimType.Tail);
         }
 
         private string TrimWhiteSpaceHelper(TrimType trimType)
@@ -2615,6 +2766,35 @@ namespace System
                         // The character is not in trimChars, so stop trimming.
                         break;
                     }
+                }
+            }
+
+            return CreateTrimmedString(start, end);
+        }
+
+        private unsafe string TrimTwoCharsStringHelper(char* twoCharsStr, TrimType trimType)
+        {
+            Debug.Assert(twoCharsStr != null);
+            Debug.Assert(Length >= 2);
+
+            int end = Length - 1;
+            int start = 0;
+
+            if ((trimType & TrimType.Head) != 0)
+            {
+                for (; start < end; start += 2)
+                {
+                    if (Unsafe.Add(ref _firstChar, start) != twoCharsStr[0] || Unsafe.Add(ref _firstChar, start + 1) != twoCharsStr[1])
+                        break;
+                }
+            }
+
+            if ((trimType & TrimType.Tail) != 0)
+            {
+                for (; end > start; end -= 2)
+                {
+                    if (Unsafe.Add(ref _firstChar, end - 1) != twoCharsStr[0] || Unsafe.Add(ref _firstChar, end) != twoCharsStr[1])
+                        break;
                 }
             }
 

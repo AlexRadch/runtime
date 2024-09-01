@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -610,6 +609,153 @@ namespace System
             return ((uint)lastPos < (uint)Length) && this[lastPos] == value;
         }
 
+        /// <summary>
+        /// Determines whether the end of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see langword="char"/> using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// The <see langword="char"/> to match to the end of this <see langword="string"/> using the
+        /// <paramref name="comparisonType"/> rules.
+        /// </param>
+        /// <param name="comparisonType">The <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see langword="char"/> matches the end of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.<br/>
+        /// The <paramref name="comparisonType"/> rules are used in the comparison.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
+        public bool EndsWith(char value, StringComparison comparisonType)
+        {
+            // If the string is empty, _firstChar will contain the null terminator.
+            // We forbid '\0' from going down the optimized code path because otherwise
+            // empty strings would appear to begin with '\0', which is incorrect.
+            // n.b. This optimization relies on the layout of string and is not valid
+            // for other data types like char[] or Span<char>.
+            if (RuntimeHelpers.IsKnownConstant(value) && value != '\0' &&
+                RuntimeHelpers.IsKnownConstant(comparisonType) && comparisonType == StringComparison.Ordinal)
+            {
+                // deref Length now to front-load the null check; also take this time to zero-extend
+                // n.b. (localLength - 1) could be negative!
+                nuint localLength = (uint)Length;
+                return Unsafe.Add(ref _firstChar, (nint)localLength - 1) == value;
+            }
+
+            switch (comparisonType)
+            {
+                case StringComparison.CurrentCulture:
+                case StringComparison.CurrentCultureIgnoreCase:
+                    return CultureInfo.CurrentCulture.CompareInfo.IsSuffix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), new ReadOnlySpan<char>(ref value),
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.InvariantCulture:
+                case StringComparison.InvariantCultureIgnoreCase:
+                    return CompareInfo.Invariant.IsSuffix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), new ReadOnlySpan<char>(ref value),
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.Ordinal:
+                {
+                    int lastPos = Length - 1;
+                    return lastPos >= 0 && Unsafe.Add(ref _firstChar, lastPos) == value;
+                }
+
+                case StringComparison.OrdinalIgnoreCase:
+                {
+                    int lastPos = Length - 1;
+                    return lastPos >= 0 && Ordinal.EqualsIgnoreCase(ref Unsafe.Add(ref _firstChar, lastPos), ref value, 1);
+
+                }
+
+                default:
+                    throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
+            }
+        }
+
+        /// <summary>
+        /// Determines whether the end of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see cref="Rune"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to match to the end of this <see langword="string"/>.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see cref="Rune"/> matches the end of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public bool EndsWith(Rune value)
+        {
+            if (value.IsBmp)
+                return EndsWith((char)value.Value);
+
+            int runePos = Length - Rune.MaxUtf16CharsPerRune;
+            if (runePos < 0)
+                return false;
+
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out char hChar, out char lChar);
+
+            return Unsafe.Add(ref _firstChar, runePos) == hChar && Unsafe.Add(ref _firstChar, runePos + 1) == lChar;
+        }
+
+        /// <summary>
+        /// Determines whether the end of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see cref="Rune"/> using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// A <see cref="Rune"/> to match to the end of this <see langword="string"/> using the
+        /// <paramref name="comparisonType"/> rules.
+        /// </param>
+        /// <param name="comparisonType">A <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see cref="Rune"/> matches the end of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.<br/>
+        /// The <paramref name="comparisonType"/> rules are used in the comparison.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
+        public bool EndsWith(Rune value, StringComparison comparisonType)
+        {
+            if (value.IsBmp)
+                return EndsWith((char)value.Value, comparisonType);
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            switch (comparisonType)
+            {
+                case StringComparison.CurrentCulture:
+                case StringComparison.CurrentCultureIgnoreCase:
+                    return CultureInfo.CurrentCulture.CompareInfo.IsSuffix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), chars,
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.InvariantCulture:
+                case StringComparison.InvariantCultureIgnoreCase:
+                    return CompareInfo.Invariant.IsSuffix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), chars,
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.Ordinal:
+                {
+                    int runePos = Length - Rune.MaxUtf16CharsPerRune;
+                    return runePos >= 0 && Unsafe.Add(ref _firstChar, runePos) == chars._reference &&
+                        Unsafe.Add(ref _firstChar, runePos + 1) == Unsafe.Add(ref chars._reference, 1);
+
+                }
+
+                case StringComparison.OrdinalIgnoreCase:
+                {
+                    int runePos = Length - Rune.MaxUtf16CharsPerRune;
+                    return runePos >= 0 && Ordinal.EqualsIgnoreCase(ref Unsafe.Add(ref _firstChar, runePos),
+                        ref chars._reference, Rune.MaxUtf16CharsPerRune);
+                }
+
+                default:
+                    throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
+            }
+        }
+
         // Determines whether two strings match.
         public override bool Equals([NotNullWhen(true)] object? obj)
         {
@@ -1183,6 +1329,70 @@ namespace System
             return Length != 0 && _firstChar == value;
         }
 
+        /// <summary>
+        /// Determines whether the start of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see langword="char"/> using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// The <see langword="char"/> to match to the start of this <see langword="string"/> using the
+        /// <paramref name="comparisonType"/> rules.
+        /// </param>
+        /// <param name="comparisonType">A <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see langword="char"/> matches the start of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.<br/>
+        /// The <paramref name="comparisonType"/> rules are used in the comparison.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
+        public bool StartsWith(char value, StringComparison comparisonType)
+        {
+            // If the string is empty, _firstChar will contain the null terminator.
+            // We forbid '\0' from going down the optimized code path because otherwise
+            // empty strings would appear to begin with '\0', which is incorrect.
+            // n.b. This optimization relies on the layout of string and is not valid
+            // for other data types like char[] or Span<char>.
+            if (RuntimeHelpers.IsKnownConstant(value) && value != '\0' &&
+                RuntimeHelpers.IsKnownConstant(comparisonType) && comparisonType == StringComparison.Ordinal)
+            {
+                return _firstChar == value;
+            }
+
+            switch (comparisonType)
+            {
+                case StringComparison.CurrentCulture:
+                case StringComparison.CurrentCultureIgnoreCase:
+                    return CultureInfo.CurrentCulture.CompareInfo.IsPrefix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), new ReadOnlySpan<char>(ref value),
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.InvariantCulture:
+                case StringComparison.InvariantCultureIgnoreCase:
+                    return CompareInfo.Invariant.IsPrefix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), new ReadOnlySpan<char>(ref value),
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.Ordinal:
+                    return Length > 0 && _firstChar == value;
+
+                case StringComparison.OrdinalIgnoreCase:
+                    return Length > 0 && Ordinal.EqualsIgnoreCase(ref _firstChar, ref value, 1);
+
+                default:
+                    throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
+            }
+        }
+
+        /// <summary>
+        /// Determines whether the start of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see cref="Rune"/>.
+        /// </summary>
+        /// <param name="value">A <see cref="Rune"/> to match to the start of this <see langword="string"/>.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see cref="Rune"/> matches the start of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.
+        /// </returns>
         public bool StartsWith(Rune value)
         {
             if (value.IsBmp)
@@ -1194,6 +1404,56 @@ namespace System
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out char hChar, out char lChar);
 
             return _firstChar == hChar && Unsafe.Add(ref _firstChar, 1) == lChar;
+        }
+
+        /// <summary>
+        /// Determines whether the start of this <see langword="string"/> matches the <paramref name="value"/>
+        /// <see cref="Rune"/> using the <paramref name="comparisonType"/> rules.
+        /// </summary>
+        /// <param name="value">
+        /// A <see cref="Rune"/> to match to the start of this <see langword="string"/> using the
+        /// <paramref name="comparisonType"/> rules.
+        /// </param>
+        /// <param name="comparisonType">A <see cref="StringComparison"/> rules to use in the comparison.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="value"/> <see cref="Rune"/> matches the start of this
+        /// <see langword="string"/>; otherwise, <see langword="false"/>.<br/>
+        /// The <paramref name="comparisonType"/> rules are used in the comparison.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The <paramref name="comparisonType"/> is not a valid <see cref="StringComparison"/> value.
+        /// </exception>
+        public bool StartsWith(Rune value, StringComparison comparisonType)
+        {
+            if (value.IsBmp)
+                return StartsWith((char)value.Value, comparisonType);
+
+            Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+
+            switch (comparisonType)
+            {
+                case StringComparison.CurrentCulture:
+                case StringComparison.CurrentCultureIgnoreCase:
+                    return CultureInfo.CurrentCulture.CompareInfo.IsPrefix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), chars,
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.InvariantCulture:
+                case StringComparison.InvariantCultureIgnoreCase:
+                    return CompareInfo.Invariant.IsPrefix(
+                        new ReadOnlySpan<char>(ref _firstChar, Length), chars,
+                        GetCaseCompareOfComparisonCulture(comparisonType));
+
+                case StringComparison.Ordinal:
+                    return Length > 1 && _firstChar == chars._reference && Unsafe.Add(ref _firstChar, 1) == Unsafe.Add(ref chars._reference, 1);
+
+                case StringComparison.OrdinalIgnoreCase:
+                    return Length > 1 && Ordinal.EqualsIgnoreCase(ref _firstChar, ref chars._reference, Rune.MaxUtf16CharsPerRune);
+
+                default:
+                    throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
+            }
         }
 
         internal static void CheckStringComparison(StringComparison comparisonType)
