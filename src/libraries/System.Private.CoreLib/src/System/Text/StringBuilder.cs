@@ -1249,11 +1249,12 @@ namespace System.Text
             }
             else
             {
+                Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-                Span<char> chars = stackalloc char[2];
-                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars[0], out chars[1]);
-                Append(ref chars[0], 2);
+                Append(chars._reference, Rune.MaxUtf16CharsPerRune);
             }
+
             return this;
         }
 
@@ -1589,11 +1590,12 @@ namespace System.Text
             }
             else
             {
+                Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-                Span<char> chars = stackalloc char[2];
-                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars[0], out chars[1]);
-                Insert(index, ref chars[0], 2);
+                Insert(index, ref chars._reference, Rune.MaxUtf16CharsPerRune);
             }
+
             return this;
         }
 
@@ -2281,6 +2283,16 @@ namespace System.Text
                 throw new ArgumentException(SR.Arg_EmptySpan, nameof(oldValue));
             }
 
+            ReplaceSpans(oldValue, newValue, startIndex, count);
+            return this;
+        }
+
+        private void ReplaceSpans(ReadOnlySpan<char> oldValue, ReadOnlySpan<char> newValue, int startIndex, int count)
+        {
+            Debug.Assert((uint)startIndex <= (uint)Length);
+            Debug.Assert(count >= 0 && startIndex <= Length - count);
+            Debug.Assert(oldValue.Length > 0);
+
             var replacements = new ValueListBuilder<int>(stackalloc int[128]); // A list of replacement positions in a chunk to apply
 
             // Find the chunk, indexInChunk for the starting point
@@ -2374,7 +2386,6 @@ namespace System.Text
             replacements.Dispose();
 
             AssertInvariants();
-            return this;
         }
 
         /// <summary>
@@ -2406,6 +2417,9 @@ namespace System.Text
             {
                 throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
             }
+
+            if (oldChar == newChar || count < 1)
+                return this;
 
             int endIndex = startIndex + count;
             StringBuilder chunk = this;
@@ -2490,35 +2504,60 @@ namespace System.Text
                 if (newRune.IsBmp)
                 {
                     Replace((char)oldRune.Value, (char)newRune.Value, startIndex, count);
+                    return this;
                 }
-                else
-                {
-                    char oldChar = (char)oldRune.Value;
-                    Span<char> newChars = stackalloc char[2];
-                    UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars[0], out newChars[1]);
 
-                    Replace(new ReadOnlySpan<char>(ref oldChar), newChars, startIndex, count);
+                int currentLength = Length;
+                if ((uint)startIndex > (uint)currentLength)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(startIndex), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
                 }
+                if (count < 0 || startIndex > currentLength - count)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
+                }
+
+                char oldChar = (char)oldRune.Value;
+
+                Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
+
+                ReplaceSpans(new ReadOnlySpan<char>(ref oldChar), newChars, startIndex, count);
+                return this;
             }
             else
             {
-                Span<char> oldChars = stackalloc char[2];
-                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars[0], out oldChars[1]);
-
-                if (newRune.IsBmp)
+                int currentLength = Length;
+                if ((uint)startIndex > (uint)currentLength)
                 {
-                    char newChar = (char)newRune.Value;
-                    Replace(oldChars, new ReadOnlySpan<char>(ref newChar), startIndex, count);
+                    throw new ArgumentOutOfRangeException(nameof(startIndex), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
                 }
-                else
+                if (count < 0 || startIndex > currentLength - count)
                 {
-                    Span<char> newChars = stackalloc char[2];
-                    UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars[0], out newChars[1]);
-
-                    Replace(oldChars, newChars, startIndex, count);
+                    throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
                 }
             }
-            return this;
+
+            if (oldRune == newRune || count < Rune.MaxUtf16CharsPerRune)
+                return this;
+
+            Span<char> oldChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars._reference, out Unsafe.Add(ref oldChars._reference, 1));
+
+            if (newRune.IsBmp)
+            {
+                char newChar = (char)newRune.Value;
+                ReplaceSpans(oldChars, new ReadOnlySpan<char>(ref newChar), startIndex, count);
+                return this;
+            }
+
+            {
+                Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
+
+                ReplaceSpans(oldChars, newChars, startIndex, count);
+                return this;
+            }
         }
 
         /// <summary>

@@ -57,9 +57,10 @@ namespace System
         public bool Contains(Rune value)
         {
             if (value.IsBmp)
-            {
                 return Contains((char)value.Value);
-            }
+
+            if (Length < Rune.MaxUtf16CharsPerRune)
+                return false;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
@@ -160,13 +161,13 @@ namespace System
             if (value.IsBmp)
                 return IndexOf((char)value.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return -1;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
-            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            return SpanHelpers.IndexOf(_firstChar, Length, chars._reference, Rune.MaxUtf16CharsPerRune);
+            return SpanHelpers.IndexOf(ref _firstChar, Length, ref chars._reference, Rune.MaxUtf16CharsPerRune);
         }
 
         /// <summary>
@@ -217,13 +218,13 @@ namespace System
             if ((uint)count > (uint)(Length - startIndex))
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
 
-            if (count < 2)
+            if (count < Rune.MaxUtf16CharsPerRune)
                 return -1;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
-            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            int result = SpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar + startIndex), count, chars._reference, Rune.MaxUtf16CharsPerRune);
+            int result = SpanHelpers.IndexOf(ref Unsafe.Add(ref _firstChar, startIndex), count, ref chars._reference, Rune.MaxUtf16CharsPerRune);
 
             return result < 0 ? result : result + startIndex;
         }
@@ -250,9 +251,9 @@ namespace System
                 return IndexOf((char)value.Value, comparisonType);
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
-            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar(value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            return MemoryExtensions.IndexOf(AsSpan(), chars, comparisonType);
+            return MemoryExtensions.IndexOf(new ReadOnlySpan<char>(ref _firstChar, Length), chars, comparisonType);
         }
 
         // Returns the index of the first occurrence of any specified character in the current instance.
@@ -494,7 +495,7 @@ namespace System
             if (value.IsBmp)
                 return LastIndexOf((char)value.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return -1;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
@@ -560,7 +561,7 @@ namespace System
             if ((uint)count > (uint)startIndex + 1)
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
 
-            if (count < 2)
+            if (count < Rune.MaxUtf16CharsPerRune)
                 return -1;
 
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
@@ -580,7 +581,7 @@ namespace System
             Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-            return MemoryExtensions.LastIndexOf(this.AsSpan(), chars, comparisonType);
+            return MemoryExtensions.LastIndexOf(new ReadOnlySpan<char>(ref _firstChar, Length), chars, comparisonType);
         }
 
         // Returns the index of the last occurrence of any specified character in the current instance.

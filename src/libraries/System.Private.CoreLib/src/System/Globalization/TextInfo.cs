@@ -196,7 +196,7 @@ namespace System.Globalization
         /// </summary>
         /// <param name="r">The <see cref="Rune"/> to convert to lowercase.</param>
         /// <returns>The <paramref name="r"/> <see cref="Rune"/> converted to lowercase.</returns>
-        public Rune ToLower(Rune r)
+        public unsafe Rune ToLower(Rune r)
         {
 #if TARGET_BROWSER
             // for invariant culture _cultureName is empty - HybridGlobalization does not have to call JS
@@ -211,10 +211,9 @@ namespace System.Globalization
             if (r.IsBmp)
             {
                 char c = (char)r.Value;
-                if (UnicodeUtility.IsAsciiCodePoint(c) && IsAsciiCasingSameAsInvariant)
-                    c = ToLowerAsciiInvariant(c);
-                else
-                    c = ChangeCase(c, toUpper: false);
+                c = UnicodeUtility.IsAsciiCodePoint(c) && IsAsciiCasingSameAsInvariant
+                    ? ToLowerAsciiInvariant(c)
+                    : ChangeCase(c, toUpper: false);
 
                 return Rune.UnsafeCreate(c);
             }
@@ -225,14 +224,7 @@ namespace System.Globalization
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)r.Value, out original._reference, out Unsafe.Add(ref original._reference, 1));
 
             // changing case uses simple folding: doesn't change UTF-16 code unit count
-            unsafe
-            {
-                fixed (char* pSource = &MemoryMarshal.GetReference(original))
-                fixed (char* pDestination = &MemoryMarshal.GetReference(modified))
-                {
-                    ChangeCaseCore(pSource, Rune.MaxUtf16CharsPerRune, pDestination, Rune.MaxUtf16CharsPerRune, bToUpper: false);
-                }
-            }
+            ChangeCaseCore(&original._reference, Rune.MaxUtf16CharsPerRune, &modified._reference, Rune.MaxUtf16CharsPerRune, bToUpper: false);
 
             return Rune.UnsafeCreate(UnicodeUtility.GetScalarFromUtf16SurrogatePair(modified._reference, Unsafe.Add(ref modified._reference, 1)));
         }
@@ -532,7 +524,7 @@ namespace System.Globalization
         /// </summary>
         /// <param name="r">The <see cref="Rune"/> to convert to uppercase.</param>
         /// <returns>The <paramref name="r"/> <see cref="Rune"/> converted to uppercase.</returns>
-        public Rune ToUpper(Rune r)
+        public unsafe Rune ToUpper(Rune r)
         {
 #if TARGET_BROWSER
             // for invariant culture _cultureName is empty - HybridGlobalization does not have to call JS
@@ -547,10 +539,9 @@ namespace System.Globalization
             if (r.IsBmp)
             {
                 char c = (char)r.Value;
-                if (UnicodeUtility.IsAsciiCodePoint(c) && IsAsciiCasingSameAsInvariant)
-                    c = ToUpperAsciiInvariant(c);
-                else
-                    c = ChangeCase(c, toUpper: true);
+                c = UnicodeUtility.IsAsciiCodePoint(c) && IsAsciiCasingSameAsInvariant
+                    ? ToUpperAsciiInvariant(c)
+                    : ChangeCase(c, toUpper: true);
 
                 return Rune.UnsafeCreate(c);
             }
@@ -561,14 +552,7 @@ namespace System.Globalization
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)r.Value, out original._reference, out Unsafe.Add(ref original._reference, 1));
 
             // changing case uses simple folding: doesn't change UTF-16 code unit count
-            unsafe
-            {
-                fixed (char* pSource = &MemoryMarshal.GetReference(original))
-                fixed (char* pDestination = &MemoryMarshal.GetReference(modified))
-                {
-                    ChangeCaseCore(pSource, Rune.MaxUtf16CharsPerRune, pDestination, Rune.MaxUtf16CharsPerRune, bToUpper: true);
-                }
-            }
+            ChangeCaseCore(&original._reference, Rune.MaxUtf16CharsPerRune, &modified._reference, Rune.MaxUtf16CharsPerRune, bToUpper: true);
 
             return Rune.UnsafeCreate(UnicodeUtility.GetScalarFromUtf16SurrogatePair(modified._reference, Unsafe.Add(ref modified._reference, 1)));
         }

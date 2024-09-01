@@ -1398,7 +1398,7 @@ namespace System
             if (value.IsBmp)
                 return StartsWith((char)value.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return false;
 
             UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out char hChar, out char lChar);

@@ -1348,26 +1348,29 @@ namespace System
                 if (newRune.IsBmp)
                     return Replace((char)oldRune.Value, (char)newRune.Value);
 
+                if (Length < 1)
+                    return this;
+
                 char oldChar = (char)oldRune.Value;
                 Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
 
                 return Replace(ref oldChar, 1, ref newChars._reference, Rune.MaxUtf16CharsPerRune);
             }
-            else
+
+            if (oldRune == newRune || Length < Rune.MaxUtf16CharsPerRune)
+                return this;
+
+            Span<char> oldChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
+            UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars._reference, out Unsafe.Add(ref oldChars._reference, 1));
+
+            if (newRune.IsBmp)
             {
-                Span<char> oldChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
-                UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)oldRune.Value, out oldChars._reference, out Unsafe.Add(ref oldChars._reference, 1));
+                char newChar = (char)newRune.Value;
+                return Replace(ref oldChars._reference, Rune.MaxUtf16CharsPerRune, ref newChar, 1);
+            }
 
-                if (newRune.IsBmp)
-                {
-                    char newChar = (char)newRune.Value;
-                    return Replace(ref oldChars._reference, Rune.MaxUtf16CharsPerRune, ref newChar, 1);
-                }
-
-                if (oldRune == newRune)
-                    return this;
-
+            {
                 Span<char> newChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)newRune.Value, out newChars._reference, out Unsafe.Add(ref newChars._reference, 1));
 
@@ -2538,7 +2541,7 @@ namespace System
             if (trimRune.IsBmp)
                 return Trim((char)trimRune.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return this;
 
             Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
@@ -2606,7 +2609,7 @@ namespace System
             if (trimRune.IsBmp)
                 return TrimStart((char)trimRune.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return this;
 
             Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];
@@ -2674,7 +2677,7 @@ namespace System
             if (trimRune.IsBmp)
                 return TrimEnd((char)trimRune.Value);
 
-            if (Length < 2)
+            if (Length < Rune.MaxUtf16CharsPerRune)
                 return this;
 
             Span<char> runeChars = stackalloc char[Rune.MaxUtf16CharsPerRune];

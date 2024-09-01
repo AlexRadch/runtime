@@ -804,18 +804,18 @@ namespace System.Text
                 return true;
             }
 
-            if (comparisonType == StringComparison.Ordinal)
-                return left == right;
+            if (comparisonType == StringComparison.Ordinal || (comparisonType == StringComparison.OrdinalIgnoreCase && left.IsBmp != right.IsBmp))
+                return false;
 
             Span<char> lChars = stackalloc char[MaxUtf16CharsPerRune];
             if (left.IsBmp)
-                (lChars = lChars.Slice(0, 1))._reference = (char)left.Value;
+                (lChars = new(ref lChars._reference))._reference = (char)left.Value;
             else
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)left.Value, out lChars._reference, out Unsafe.Add(ref lChars._reference, 1));
 
             Span<char> rChars = stackalloc char[MaxUtf16CharsPerRune];
             if (right.IsBmp)
-                (rChars = rChars.Slice(0, 1))._reference = (char)right.Value;
+                (rChars = new(ref rChars._reference))._reference = (char)right.Value;
             else
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)right.Value, out rChars._reference, out Unsafe.Add(ref rChars._reference, 1));
 
@@ -832,7 +832,10 @@ namespace System.Text
                 // case StringComparison.Ordinal was handled at the beginning of the method
 
                 case StringComparison.OrdinalIgnoreCase:
-                    return Ordinal.CompareStringIgnoreCase(ref lChars._reference, lChars.Length, ref rChars._reference, rChars.Length) == 0;
+                    if (left.IsBmp)
+                        return Ordinal.CompareStringIgnoreCase(ref lChars._reference, lChars.Length, ref rChars._reference, rChars.Length) == 0;
+                    else
+                        return Ordinal.CompareStringIgnoreCaseNonAscii(ref lChars._reference, lChars.Length, ref rChars._reference, rChars.Length) == 0;
 
                 default:
                     throw new ArgumentException(SR.NotSupported_StringComparison, nameof(comparisonType));
