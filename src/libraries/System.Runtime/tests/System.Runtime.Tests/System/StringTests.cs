@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -399,29 +400,61 @@ namespace System.Tests
         }
 
         [Fact]
-        public static void Contains_ZeroLength_Char()
+        public static void Contains_Zero_Char()
         {
             // Span
-            var span = new Span<char>(Array.Empty<char>());
-            bool found = span.Contains((char)0);
-            Assert.False(found);
+            {
+                Span<char> span = Span<char>.Empty;
+                Assert.False(span.Contains((char)0));
 
-            span = Span<char>.Empty;
-            found = span.Contains((char)0);
-            Assert.False(found);
+                span = new Span<char>(Array.Empty<char>());
+                Assert.False(span.Contains((char)0));
+
+                span = new Span<char>(new char[0]);
+                Assert.False(span.Contains((char)0));
+
+                span = new Span<char>(['\0', '\0', '\0']);
+                Assert.False(span.Slice(1, 0).Contains((char)0));
+                Assert.True(span.Slice(1, 1).Contains((char)0));
+            }
 
             // ReadOnlySpan
-            var ros = new ReadOnlySpan<char>(Array.Empty<char>());
-            found = ros.Contains((char)0);
-            Assert.False(found);
+            {
+                ReadOnlySpan<char> span = ReadOnlySpan<char>.Empty;
+                Assert.False(span.Contains((char)0));
 
-            ros = ReadOnlySpan<char>.Empty;
-            found = ros.Contains((char)0);
-            Assert.False(found);
+                span = new ReadOnlySpan<char>(Array.Empty<char>());
+                Assert.False(span.Contains((char)0));
+
+                span = new ReadOnlySpan<char>(new char[0]);
+                Assert.False(span.Contains((char)0));
+
+                span = new ReadOnlySpan<char>(['\0', '\0', '\0']);
+                Assert.False(span.Slice(1, 0).Contains((char)0));
+                Assert.True(span.Slice(1, 1).Contains((char)0));
+            }
 
             // String
-            found = string.Empty.Contains((char)0);
-            Assert.False(found);
+            {
+                Assert.False(string.Empty.Contains((char)0));
+                Assert.False(string.Empty.Contains((char)0, StringComparison.Ordinal));
+                Assert.False(string.Empty.Contains((char)0, StringComparison.OrdinalIgnoreCase));
+
+                Assert.True("\0".Contains((char)0));
+                Assert.True("\0".Contains((char)0, StringComparison.Ordinal));
+                Assert.True("\0".Contains((char)0, StringComparison.OrdinalIgnoreCase));
+
+                // Various results, no exceptions
+                string.Empty.Contains((char)0, StringComparison.CurrentCulture);
+                string.Empty.Contains((char)0, StringComparison.CurrentCultureIgnoreCase);
+                string.Empty.Contains((char)0, StringComparison.InvariantCulture);
+                string.Empty.Contains((char)0, StringComparison.InvariantCultureIgnoreCase);
+
+                Assert.True("\0".Contains((char)0, StringComparison.CurrentCulture));
+                Assert.True("\0".Contains((char)0, StringComparison.CurrentCultureIgnoreCase));
+                Assert.True("\0".Contains((char)0, StringComparison.InvariantCulture));
+                Assert.True("\0".Contains((char)0, StringComparison.InvariantCultureIgnoreCase));
+            }
         }
 
         [Fact]
@@ -452,6 +485,9 @@ namespace System.Tests
                 var str = new string(ca);
                 found = str.Contains((char)200);
                 Assert.True(found);
+
+                foreach (StringComparison comparison in Enum.GetValuesAsUnderlyingType(typeof(StringComparison)).Cast<StringComparison>())
+                    Assert.True(str.Contains((char)200, comparison));
             }
         }
 
@@ -478,6 +514,9 @@ namespace System.Tests
                 var str = new string(ca, 1, length);
                 found = str.Contains('9');
                 Assert.False(found);
+
+                foreach (StringComparison comparison in Enum.GetValuesAsUnderlyingType(typeof(StringComparison)).Cast<StringComparison>())
+                    Assert.False(str.Contains('9', comparison));
             }
         }
 
@@ -491,6 +530,7 @@ namespace System.Tests
         public static void Contains_NullValue_WithComparisonType_ThrowsArgumentNullException(StringComparison comparisonType)
         {
             AssertExtensions.Throws<ArgumentNullException>("value", () => "foo".Contains(null, comparisonType));
+            AssertExtensions.Throws<ArgumentNullException>("value", () => string.Empty.Contains(null, comparisonType));
         }
 
         [Theory]
@@ -499,6 +539,14 @@ namespace System.Tests
         public static void Contains_InvalidComparisonType_ThrowsArgumentOutOfRangeException(StringComparison comparisonType)
         {
             AssertExtensions.Throws<ArgumentException>("comparisonType", () => "ab".Contains("a", comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "ab".Contains(string.Empty, comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.Contains("a", comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.Contains(string.Empty, comparisonType));
+
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "ab".Contains('a', comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "ab".Contains((char)0, comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.Contains('a', comparisonType));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.Contains((char)0, comparisonType));
         }
 
         [Theory]
@@ -1173,6 +1221,7 @@ namespace System.Tests
             using (new ThreadCultureChange("tr-TR"))
             {
                 string s = "Turkish I \u0131s TROUBL\u0130NG!";
+
                 char value = '\u0130';
                 Assert.Equal(19, s.IndexOf(value));
                 Assert.Equal(19, s.IndexOf(value, StringComparison.CurrentCulture));
@@ -1205,8 +1254,8 @@ namespace System.Tests
             using (new ThreadCultureChange(CultureInfo.InvariantCulture))
             {
                 string s = "Turkish I \u0131s TROUBL\u0130NG!";
-                char value = '\u0130';
 
+                char value = '\u0130';
                 Assert.Equal(19, s.IndexOf(value));
                 Assert.Equal(19, s.IndexOf(value, StringComparison.CurrentCulture));
                 Assert.Equal(19, s.IndexOf(value, StringComparison.CurrentCultureIgnoreCase));
@@ -1223,8 +1272,8 @@ namespace System.Tests
             using (new ThreadCultureChange("en-US"))
             {
                 string s = "Turkish I \u0131s TROUBL\u0130NG!";
-                char value = '\u0130';
 
+                char value = '\u0130';
                 Assert.Equal(19, s.IndexOf(value));
                 Assert.Equal(19, s.IndexOf(value, StringComparison.CurrentCulture));
                 Assert.Equal(19, s.IndexOf(value, StringComparison.CurrentCultureIgnoreCase));
@@ -1296,11 +1345,74 @@ namespace System.Tests
         }
 
         [Fact]
+        public static void IndexOf_Zero_Char()
+        {
+            // Span
+            {
+                Span<char> span = Span<char>.Empty;
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new Span<char>(Array.Empty<char>());
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new Span<char>(new char[0]);
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new Span<char>(['\0', '\0', '\0']);
+                Assert.Equal(-1, span.Slice(1, 0).IndexOf((char)0));
+                Assert.Equal(0, span.Slice(1, 1).IndexOf((char)0));
+            }
+
+            // ReadOnlySpan
+            {
+                ReadOnlySpan<char> span = ReadOnlySpan<char>.Empty;
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(Array.Empty<char>());
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(new char[0]);
+                Assert.Equal(-1, span.IndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(['\0', '\0', '\0']);
+                Assert.Equal(-1, span.Slice(1, 0).IndexOf((char)0));
+                Assert.Equal(0, span.Slice(1, 1).IndexOf((char)0));
+            }
+
+            // String
+            {
+                Assert.Equal(-1, string.Empty.IndexOf((char)0));
+                Assert.Equal(-1, string.Empty.IndexOf((char)0, StringComparison.Ordinal));
+                Assert.Equal(-1, string.Empty.IndexOf((char)0, StringComparison.OrdinalIgnoreCase));
+
+                Assert.Equal(0, "\0".IndexOf((char)0));
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.Ordinal));
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.OrdinalIgnoreCase));
+
+                Assert.InRange(string.Empty.IndexOf((char)0, StringComparison.CurrentCulture), -1, 0 );
+                Assert.InRange(string.Empty.IndexOf((char)0, StringComparison.CurrentCultureIgnoreCase), -1, 0);
+                Assert.InRange(string.Empty.IndexOf((char)0, StringComparison.InvariantCulture), -1, 0);
+                Assert.InRange(string.Empty.IndexOf((char)0, StringComparison.InvariantCultureIgnoreCase), -1, 0);
+
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.CurrentCulture));
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.InvariantCulture));
+                Assert.Equal(0, "\0".IndexOf((char)0, StringComparison.InvariantCultureIgnoreCase));
+            }
+        }
+
+        [Fact]
         public static void IndexOf_Invalid_Char()
         {
             // Invalid comparison type
             AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".IndexOf('o', StringComparison.CurrentCulture - 1));
             AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".IndexOf('o', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".IndexOf('\0', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".IndexOf('\0', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.IndexOf('o', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.IndexOf('o', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.IndexOf('\0', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.IndexOf('\0', StringComparison.OrdinalIgnoreCase + 1));
         }
 
         public static IEnumerable<object[]> IndexOf_String_StringComparison_TestData()
@@ -1321,6 +1433,240 @@ namespace System.Tests
         public static void IndexOf_Ordinal_Misc(string source, string target, StringComparison stringComparison, int expected)
         {
             Assert.Equal(expected, source.IndexOf(target, stringComparison));
+        }
+
+        [Theory]
+        [InlineData("Hello", 'l', StringComparison.Ordinal, 3)]
+        [InlineData("Hello", 'x', StringComparison.Ordinal, -1)]
+        [InlineData("Hello", 'h', StringComparison.Ordinal, -1)]
+        [InlineData("Hello", 'o', StringComparison.Ordinal, 4)]
+        [InlineData("Hello", 'h', StringComparison.OrdinalIgnoreCase, 0)]
+        [InlineData("HeLlo", 'L', StringComparison.OrdinalIgnoreCase, 3)]
+        [InlineData("HeLlo", 'L', StringComparison.Ordinal, 2)]
+        [InlineData("HelLo", '\0', StringComparison.Ordinal, -1)]
+        [InlineData("!@#$%", '%', StringComparison.Ordinal, 4)]
+        [InlineData("!@#$", '!', StringComparison.Ordinal, 0)]
+        [InlineData("!@#$", '@', StringComparison.Ordinal, 1)]
+        [InlineData("!@#$%", '%', StringComparison.OrdinalIgnoreCase, 4)]
+        [InlineData("!@#$", '!', StringComparison.OrdinalIgnoreCase, 0)]
+        [InlineData("!@#$", '@', StringComparison.OrdinalIgnoreCase, 1)]
+        [InlineData("_____________\u807f", '\u007f', StringComparison.Ordinal, -1)]
+        [InlineData("_____________\u807f__", '\u007f', StringComparison.Ordinal, -1)]
+        [InlineData("_____________\u007f\u807f_", '\u007f', StringComparison.Ordinal, 13)]
+        [InlineData("__\u807f_______________", '\u007f', StringComparison.Ordinal, -1)]
+        [InlineData("__\u007f___\u807f___________", '\u007f', StringComparison.Ordinal, 2)]
+        [InlineData("_____________\u807f", '\u007f', StringComparison.OrdinalIgnoreCase, -1)]
+        [InlineData("_____________\u807f__", '\u007f', StringComparison.OrdinalIgnoreCase, -1)]
+        [InlineData("_____________\u007f\u807f_", '\u007f', StringComparison.OrdinalIgnoreCase, 13)]
+        [InlineData("__\u807f_______________", '\u007f', StringComparison.OrdinalIgnoreCase, -1)]
+        [InlineData("__\u007f___\u807f___________", '\u007f', StringComparison.OrdinalIgnoreCase, 2)]
+        public static void LastIndexOf_SingleLetter_StringComparison(string s, char target, StringComparison stringComparison, int expected)
+        {
+            Assert.Equal(expected, s.LastIndexOf(target, stringComparison));
+            var charArray = new char[1];
+            charArray[0] = target;
+            Assert.Equal(expected, s.AsSpan().LastIndexOf(charArray, stringComparison));
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotInvariantGlobalization))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/60568", TestPlatforms.Android | TestPlatforms.LinuxBionic)]
+        public static void LastIndexOf_TurkishI_TurkishCulture_Char()
+        {
+            using (new ThreadCultureChange("tr-TR"))
+            {
+                string s = "Turkish I \u0131s TROUBL\u0130NG! \u0131s I Turkish";
+
+                char value = '\u0130';
+                Assert.Equal(19, s.LastIndexOf(value));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 3, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.Ordinal));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.OrdinalIgnoreCase));
+
+                ReadOnlySpan<char> span = s.AsSpan();
+                Assert.Equal(19, span.LastIndexOf(new char[] { value }, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 3, span.LastIndexOf(new char[] { value }, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(19, span.LastIndexOf(new char[] { value }, StringComparison.Ordinal));
+                Assert.Equal(19, span.LastIndexOf(new char[] { value }, StringComparison.OrdinalIgnoreCase));
+
+                value = '\u0131';
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 9, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.Ordinal));
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.OrdinalIgnoreCase));
+
+                Assert.Equal(s.Length - 12, span.LastIndexOf(new char[] { value }, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 9, span.LastIndexOf(new char[] { value }, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(s.Length - 12, span.LastIndexOf(new char[] { value }, StringComparison.Ordinal));
+                Assert.Equal(s.Length - 12, span.LastIndexOf(new char[] { value }, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotInvariantGlobalization))]
+        public static void LastIndexOf_TurkishI_InvariantCulture_Char()
+        {
+            using (new ThreadCultureChange(CultureInfo.InvariantCulture))
+            {
+                string s = "Turkish I \u0131s TROUBL\u0130NG! \u0131s I Turkish";
+
+                char value = '\u0130';
+                Assert.Equal(19, s.LastIndexOf(value));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+
+                value = '\u0131';
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotInvariantGlobalization))]
+        public static void LastIndexOf_TurkishI_EnglishUSCulture_Char()
+        {
+            using (new ThreadCultureChange("en-US"))
+            {
+                string s = "Turkish I \u0131s TROUBL\u0130NG! \u0131s I Turkish";
+
+                char value = '\u0130';
+                Assert.Equal(19, s.LastIndexOf(value));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(19, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+
+                value = '\u0131';
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(s.Length - 12, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotInvariantGlobalization))]
+        public static void LastIndexOf_EquivalentDiacritics_EnglishUSCulture_Char()
+        {
+            string s = "Exhibit a\u0300\u00C0a\u0300 Exhibit";
+            char value = '\u00C0';
+
+            using (new ThreadCultureChange("en-US"))
+            {
+                Assert.Equal(10, s.LastIndexOf(value));
+                Assert.Equal(10, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(11, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(10, s.LastIndexOf(value, StringComparison.Ordinal));
+                Assert.Equal(10, s.LastIndexOf(value, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        [Fact]
+        public static void LastIndexOf_EquivalentDiacritics_InvariantCulture_Char()
+        {
+            string s = "Exhibit a\u0300\u00C0a\u0300 Exhibit";
+            char value = '\u00C0';
+
+            using (new ThreadCultureChange(CultureInfo.InvariantCulture))
+            {
+                Assert.Equal(10, s.LastIndexOf(value));
+                Assert.Equal(10, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(PlatformDetection.IsInvariantGlobalization ? 10 : 11, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+            }
+        }
+
+        [Fact]
+        public static void LastIndexOf_CyrillicE_EnglishUSCulture_Char()
+        {
+            string s = "Bar\u0400Foo";
+            char value = '\u0400';
+
+            using (new ThreadCultureChange("en-US"))
+            {
+                Assert.Equal(3, s.LastIndexOf(value));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.Ordinal));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        [Fact]
+        public static void LastIndexOf_CyrillicE_InvariantCulture_Char()
+        {
+            string s = "Bar\u0400Foo";
+            char value = '\u0400';
+
+            using (new ThreadCultureChange(CultureInfo.InvariantCulture))
+            {
+                Assert.Equal(3, s.LastIndexOf(value));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.CurrentCulture));
+                Assert.Equal(3, s.LastIndexOf(value, StringComparison.CurrentCultureIgnoreCase));
+            }
+        }
+
+        [Fact]
+        public static void LastIndexOf_Zero_Char()
+        {
+            // Span
+            {
+                Span<char> span = Span<char>.Empty;
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new Span<char>(Array.Empty<char>());
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new Span<char>(new char[0]);
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new Span<char>(['\0', '\0', '\0', '\0']);
+                Assert.Equal(-1, span.Slice(1, 0).LastIndexOf((char)0));
+                Assert.Equal(1, span.Slice(1, 2).LastIndexOf((char)0));
+            }
+
+            // ReadOnlySpan
+            {
+                ReadOnlySpan<char> span = ReadOnlySpan<char>.Empty;
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(Array.Empty<char>());
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(new char[0]);
+                Assert.Equal(-1, span.LastIndexOf((char)0));
+
+                span = new ReadOnlySpan<char>(['\0', '\0', '\0', '\0']);
+                Assert.Equal(-1, span.Slice(1, 0).LastIndexOf((char)0));
+                Assert.Equal(1, span.Slice(1, 2).LastIndexOf((char)0));
+            }
+
+            // String
+            {
+                Assert.Equal(-1, string.Empty.LastIndexOf((char)0));
+                Assert.Equal(-1, string.Empty.LastIndexOf((char)0, StringComparison.Ordinal));
+                Assert.Equal(-1, string.Empty.LastIndexOf((char)0, StringComparison.OrdinalIgnoreCase));
+
+                Assert.Equal(1, "\0\0".LastIndexOf((char)0));
+                Assert.Equal(1, "\0\0".LastIndexOf((char)0, StringComparison.Ordinal));
+                Assert.Equal(1, "\0\0".LastIndexOf((char)0, StringComparison.OrdinalIgnoreCase));
+
+                Assert.Contains(string.Empty.LastIndexOf((char)0, StringComparison.CurrentCulture), new int[] { -1, 0 });
+                Assert.Contains(string.Empty.LastIndexOf((char)0, StringComparison.CurrentCultureIgnoreCase), new int[] { -1, 0 });
+                Assert.Contains(string.Empty.LastIndexOf((char)0, StringComparison.InvariantCulture), new int[] { -1, 0 });
+                Assert.Contains(string.Empty.LastIndexOf((char)0, StringComparison.InvariantCultureIgnoreCase), new int[] { -1, 0 });
+
+                Assert.Contains("\0\0".LastIndexOf((char)0, StringComparison.CurrentCulture), new int[] { 1, 2 });
+                Assert.Contains("\0\0".LastIndexOf((char)0, StringComparison.CurrentCultureIgnoreCase), new int[] { 1, 2 });
+                Assert.Contains("\0\0".LastIndexOf((char)0, StringComparison.InvariantCulture), new int[] { 1, 2 });
+                Assert.Contains("\0\0".LastIndexOf((char)0, StringComparison.InvariantCultureIgnoreCase), new int[] { 1, 2 });
+            }
+        }
+
+        [Fact]
+        public static void LastIndexOf_Invalid_Char()
+        {
+            // Invalid comparison type
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".LastIndexOf('o', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".LastIndexOf('o', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".LastIndexOf('\0', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => "foo".LastIndexOf('\0', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.LastIndexOf('o', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.LastIndexOf('o', StringComparison.OrdinalIgnoreCase + 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.LastIndexOf('\0', StringComparison.CurrentCulture - 1));
+            AssertExtensions.Throws<ArgumentException>("comparisonType", () => string.Empty.LastIndexOf('\0', StringComparison.OrdinalIgnoreCase + 1));
         }
 
         public static IEnumerable<object[]> LastIndexOf_String_StringComparison_TestData()
@@ -2041,5 +2387,219 @@ namespace System.Tests
         {
             Assert.Equal(sign, Math.Sign(string.Compare(a, b, StringComparison.OrdinalIgnoreCase)));
         }
+
+        #region Rune
+
+        private static IEnumerable<(string Str, Rune Rune)> Rune_SearchingData() =>
+        [
+            // Contains Math letters and numbers 1D400 – 1D7FF
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('\0')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('\u0001')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('A')),
+            new("A\0𝐚_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('a')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('B')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('b')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('С')),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", new('с')),
+            // Math letters and numbers 1D400 – 1D7FF
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝚪", 0)),
+            new("A\0𝐚_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝛄", 0)),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝚫", 0)),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝛅", 0)),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝚵", 0)),
+            new("A\0a_𝚪𝛄𝛅𝚫_bB_Bb_𝚫𝛅𝛄𝚪_a\0A", Rune.GetRuneAt("𝛏", 0)),
+            // Empty string
+            new(string.Empty, new('\0')),
+            new(string.Empty, new('A')),
+            new(string.Empty, Rune.GetRuneAt("𝚪", 0)),
+            // Zero string
+            new("\0", new('\0')),
+            new("\0", new('A')),
+            new("\0", Rune.GetRuneAt("𝚪", 0)),
+        ];
+
+        public static TheoryData<string, Rune, StringComparison, bool> Contains_Rune_TestData()
+        {
+            var data = new TheoryData<string, Rune, StringComparison, bool>();
+            foreach (var comparison in Enum.GetValues(typeof(StringComparison)).Cast<StringComparison>())
+            {
+                foreach (var (str, rune) in Rune_SearchingData())
+                    data.Add(str, rune, comparison, str.Contains(rune.ToString(), comparison));
+            }
+            return data;
+        }
+
+        [Theory]
+        [MemberData(nameof(Contains_Rune_TestData))]
+        public static void Contains_Rune(string str, Rune value, StringComparison comparison, bool expected)
+        {
+            if (comparison == StringComparison.Ordinal)
+                Assert.Equal(expected, str.Contains(value));
+
+            Assert.Equal(expected, str.Contains(value, comparison));
+        }
+
+        public static TheoryData<string, Rune, StringComparison> Contains_Rune_InvalidStringComparison_TestData()
+        {
+            var data = new TheoryData<string, Rune, StringComparison>();
+            foreach (var item in Rune_SearchingData())
+            {
+                data.Add(item.Str, item.Rune, StringComparison.CurrentCulture - 1);
+                data.Add(item.Str, item.Rune, StringComparison.OrdinalIgnoreCase + 1);
+            }
+            return data;
+        }
+
+        [Theory]
+        [MemberData(nameof(Contains_Rune_InvalidStringComparison_TestData))]
+        public static void Contains_Rune_InvalidStringComparison(string str, Rune value, StringComparison comparison)
+        {
+            Assert.Throws<ArgumentException>("comparisonType", () => str.Contains(value, comparison));
+        }
+
+        public static TheoryData<string, Rune, StringComparison, int, int, int> IndexOf_Rune_TestData()
+        {
+            var data = new TheoryData<string, Rune, StringComparison, int, int, int>();
+            foreach (var comparison in Enum.GetValues(typeof(StringComparison)).Cast<StringComparison>())
+            {
+                foreach (var (str, rune) in Rune_SearchingData())
+                {
+                    var runeStr = rune.ToString();
+                    var runeLen = runeStr.Length;
+                    var index = str.IndexOf(runeStr, comparison);
+
+                    if (string.Empty.IndexOf(runeStr, comparison) == 0)
+                    {
+                        // Empty Rune
+
+                        // All string
+                        data.Add(str, rune, comparison, 0, str.Length, 0);
+
+                        // Empty at Start
+                        if (str.Length > 0)
+                            data.Add(str, rune, comparison, 0, 0, 0);
+
+                        // Empty at End
+                        if (str.Length > 1)
+                            data.Add(str, rune, comparison, str.Length - 1 , 0, 0);
+
+                        // Empty after End
+                        if (str.Length > 0)
+                            data.Add(str, rune, comparison, str.Length, 0, 0);
+
+                        // From Start to Middle
+                        if (str.Length > 1)
+                        {
+                            var start = (str.Length + 2) / 4;
+                            data.Add(str, rune, comparison, start, str.Length - start, start);
+                        }
+
+                        // From start
+                        if (str.Length > 1)
+                        {
+                            var start = (str.Length + 2) / 4;
+                            data.Add(str, rune, comparison, start, str.Length - start, start);
+                        }
+
+                        // To middle
+
+
+                        // Middle
+                        if (str.Length > 2)
+                        {
+                            var start = (str.Length + 2) / 4;
+                            var count = str.Length / 2;
+                            data.Add(str, rune, comparison, start, str.Length - start, start);
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                    Debug.Assert(index1 >= -1, $"\"{str}\" {(uint)rune.Value} {comparison} {index1}");
+
+                    Debug.Assert(index1 < str.Length || str.Length == 0, $"\"{str}\" {(uint)rune.Value} {comparison} {index1} {str.Length}");
+
+                    // All string
+                    data.Add(str, rune, comparison, 0, str.Length, index1);
+
+                    if (index1 >= 0)
+                    {
+                        var index2 = str.LastIndexOf(runeStr, comparison);
+                        Debug.Assert(index2 >= index1, $"\"{str}\" {(uint)rune.Value} {comparison} {index1} {index2}");
+                        Debug.Assert(index2 < str.Length || comparison < StringComparison.Ordinal && index2 == str.Length, $"\"{str}\" {(uint)rune.Value} {comparison} {index2} {str.Length}");
+
+                        // Start of string
+                        if (index1 + runeLen <= str.Length)
+                            data.Add(str, rune, comparison, 0, index1 + runeLen, index1);
+                        var count = index1 + runeLen - 1;
+                        if (count <= str.Length)
+                            data.Add(str, rune, comparison, 0, count, str.IndexOf(runeStr, 0, count, comparison));
+
+                        // At Index1
+                        if (index1 > 0)
+                        {
+                            data.Add(str, rune, comparison, index1, runeLen, index1);
+                            data.Add(str, rune, comparison, index1, runeLen - 1, -1);
+                        }
+
+                        // Middle of string
+                        if (index2 > index1)
+                        {
+                            var start = Math.Min(index1 + 1, str.Length);
+                            var end = Math.Min(index2 + runeLen, str.Length);
+                            count = end - start;
+
+                            data.Add(str, rune, comparison, index1 + 1, count, str.IndexOf(runeStr, index1 + 1, count, comparison));
+                            count--;
+                            if (count > 0)
+                                data.Add(str, rune, comparison, index1 + 1, count, str.IndexOf(runeStr, index1 + 1, count, comparison));
+                        }
+
+                        // End of string
+                        data.Add(str, rune, comparison, index2, str.Length - index2, index2);
+                        data.Add(str, rune, comparison, index2 + 1, str.Length - index2 - 1, -1);
+                    }
+                    else if (str.Length > 0)
+                    {
+                        var indexM = (str.Length + 1) / 2;
+                        data.Add(str, rune, comparison, 0, indexM, -1);
+                        data.Add(str, rune, comparison, indexM, str.Length - indexM, -1);
+                    }
+                }
+            }
+            return data;
+        }
+
+        [Theory]
+        [MemberData(nameof(IndexOf_Rune_TestData))]
+        public static void IndexOf_Rune(string str, Rune value, StringComparison comparison, int start, int count, int expected)
+        {
+            if (comparison == StringComparison.Ordinal)
+            {
+                if (start == 0 && count == str.Length)
+                    Assert.Equal(expected, str.IndexOf(value));
+
+                if (count == str.Length - start)
+                    Assert.Equal(expected, str.IndexOf(value, start));
+
+                Assert.Equal(expected, str.IndexOf(value, start, count));
+            }
+
+            if (start == 0 && count == str.Length)
+            {
+                Assert.Equal(expected, str.IndexOf(value, comparison));
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Contains_Rune_InvalidStringComparison_TestData))]
+        public static void IndexOf_Rune_InvalidStringComparison(string str, Rune value, StringComparison comparison)
+        {
+            Assert.Throws<ArgumentException>("comparisonType", () => str.IndexOf(value, comparison));
+        }
+
+
+        #endregion
     }
 }

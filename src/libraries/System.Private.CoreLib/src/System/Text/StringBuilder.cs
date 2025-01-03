@@ -1252,7 +1252,7 @@ namespace System.Text
                 Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
-                Append(chars._reference, Rune.MaxUtf16CharsPerRune);
+                Append(ref chars._reference, Rune.MaxUtf16CharsPerRune);
             }
 
             return this;
@@ -1590,6 +1590,9 @@ namespace System.Text
             }
             else
             {
+                if ((uint)index > (uint)Length)
+                    throw new ArgumentOutOfRangeException(nameof(index), SR.ArgumentOutOfRange_IndexMustBeLessOrEqual);
+
                 Span<char> chars = stackalloc char[Rune.MaxUtf16CharsPerRune];
                 UnicodeUtility.GetUtf16SurrogatesFromSupplementaryPlaneScalar((uint)value.Value, out chars._reference, out Unsafe.Add(ref chars._reference, 1));
 
@@ -2525,7 +2528,7 @@ namespace System.Text
                 ReplaceSpans(new ReadOnlySpan<char>(ref oldChar), newChars, startIndex, count);
                 return this;
             }
-            else
+
             {
                 int currentLength = Length;
                 if ((uint)startIndex > (uint)currentLength)
