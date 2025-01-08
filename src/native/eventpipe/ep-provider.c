@@ -421,7 +421,7 @@ provider_invoke_callback (EventPipeProviderCallbackData *provider_callback_data)
 		if (j < filter_data_len)
 			buffer_size = j + 1;
 
-		ep_event_filter_desc_init (&event_filter_desc, (uint64_t)buffer, buffer_size, 0);
+		ep_event_filter_desc_init (&event_filter_desc, (uint64_t)buffer, buffer_size, /* EventFilterType.StringKeyValueEncoding */ 0);
 		is_event_filter_desc_init = true;
 	}
 
@@ -493,6 +493,7 @@ provider_free (EventPipeProvider * provider)
 
 	dn_list_custom_free (provider->event_list, event_free_func);
 
+	ep_rt_wait_event_free (&provider->callbacks_complete_event);
 	ep_rt_utf16_string_free (provider->provider_name_utf16);
 	ep_rt_utf8_string_free (provider->provider_name);
 	ep_rt_object_free (provider);
