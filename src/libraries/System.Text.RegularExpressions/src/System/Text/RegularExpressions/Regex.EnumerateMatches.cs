@@ -151,9 +151,6 @@ namespace System.Text.RegularExpressions
                     return true;
                 }
 
-                _current = new ValueMatch(_regex.RightToLeft ? 0 : _input.Length, 0);
-                _startAt = _current.Index;
-                _prevLen = 0;
                 return false;
             }
 
