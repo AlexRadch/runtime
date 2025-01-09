@@ -128,6 +128,9 @@ namespace System.Numerics.Tensors.Tests
                     Assert.Equal(expectedOutput[i], span[i]);
                     Assert.Equal(expectedOutput[i], destSpan[i]);
                 }
+                TensorSpan_TestEnumerator(x);
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(tensorResults);
 
                 // Now test if the source is sliced to be smaller then the destination that the destination is also sliced
                 // to the correct size.
@@ -137,6 +140,7 @@ namespace System.Numerics.Tensors.Tests
                 TIn[] sliceData = new TIn[sliceFlattenedLength];
                 x.FlattenTo(sliceData);
                 expectedOutput = new TOut[sliceFlattenedLength];
+                TensorSpan_TestEnumerator(x);
 
                 if (TensorHelpers.IsContiguousAndDense<TIn>(x))
                 {
@@ -172,6 +176,8 @@ namespace System.Numerics.Tensors.Tests
                     Assert.Equal(expectedOutput[i], destEnum.Current);
                     Assert.Equal(expectedOutput[i], tensorResultsEnum.Current);
                 }
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(tensorResults);
 
                 // Now test if the source and destination are sliced (so neither is continuous) it works correctly.
                 destination = destination.Slice(sliceLengths);
@@ -191,6 +197,7 @@ namespace System.Numerics.Tensors.Tests
                     }
 
                 }
+                TensorSpan_TestEnumerator(destination);
 
                 tensorResults = tensorOperation(x, destination);
 
@@ -209,6 +216,8 @@ namespace System.Numerics.Tensors.Tests
                     Assert.Equal(expectedOutput[i], destEnum.Current);
                     Assert.Equal(expectedOutput[i], tensorResultsEnum.Current);
                 }
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(tensorResults);
             });
         }
 
@@ -324,6 +333,10 @@ namespace System.Numerics.Tensors.Tests
                 TensorSpan<T> destination = Tensor.Create<T>(destData, tensorLengths, []);
                 tensorPrimitivesOperation((ReadOnlySpan<T>)data1, data2, expectedOutput);
                 TensorSpan<T> results = tensorOperation(x, y, destination);
+                TensorSpan_TestEnumerator(x);
+                TensorSpan_TestEnumerator(y);
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(results);
 
                 Assert.Equal(tensorLengths, results.Lengths);
                 nint[] startingIndex = new nint[tensorLengths.Length];
@@ -342,7 +355,12 @@ namespace System.Numerics.Tensors.Tests
                 nint[] tempLengths = tensorLengths.Select(i => i + 1).ToArray();
                 T[] tempDestData = new T[CalculateTotalLength(tempLengths)];
                 destination = Tensor.Create<T>(tempDestData, tempLengths, []);
+                TensorSpan_TestEnumerator(destination);
                 results = tensorOperation(x, y, destination);
+                TensorSpan_TestEnumerator(x);
+                TensorSpan_TestEnumerator(y);
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(results);
 
                 // Since the slice was internal the result lengths will be the extra large size.
                 Assert.Equal(tempLengths, results.Lengths);
@@ -372,6 +390,7 @@ namespace System.Numerics.Tensors.Tests
                 destination = destination.Slice(tensorLengths);
                 x.Slice(sliceLengths).BroadcastTo(x);
                 x.FlattenTo(data1);
+                TensorSpan_TestEnumerator(x);
 
                 if (TensorHelpers.IsContiguousAndDense<T>(x.Slice(sliceLengths)) && TensorHelpers.IsContiguousAndDense<T>(y))
                 {
@@ -387,6 +406,10 @@ namespace System.Numerics.Tensors.Tests
                 }
 
                 results = tensorOperation(x.Slice(sliceLengths), y, destination);
+                TensorSpan_TestEnumerator(x.Slice(sliceLengths));
+                TensorSpan_TestEnumerator(y);
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(results);
 
                 // results lengths will still be the original tensorLength
                 Assert.Equal(tensorLengths, results.Lengths);
@@ -408,6 +431,7 @@ namespace System.Numerics.Tensors.Tests
                 // Now test if the second source is sliced to be smaller than the first (but is broadcast compatible) that broadcasting happens).
                 y.Slice(sliceLengths).BroadcastTo(y);
                 y.FlattenTo(data2);
+                TensorSpan_TestEnumerator(y);
 
                 if (TensorHelpers.IsContiguousAndDense<T>(x) && TensorHelpers.IsContiguousAndDense<T>(y.Slice(sliceLengths)))
                 {
@@ -423,6 +447,10 @@ namespace System.Numerics.Tensors.Tests
                 }
 
                 results = tensorOperation(x, y.Slice(sliceLengths), destination);
+                TensorSpan_TestEnumerator(x);
+                TensorSpan_TestEnumerator(y.Slice(sliceLengths));
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(results);
 
                 // results lengths will still be the original tensorLength
                 Assert.Equal(tensorLengths, results.Lengths);
@@ -463,6 +491,10 @@ namespace System.Numerics.Tensors.Tests
                 }
 
                 results = tensorOperation(x.Slice(sliceLengths), y.Slice(sliceLengths), destination);
+                TensorSpan_TestEnumerator(x.Slice(sliceLengths));
+                TensorSpan_TestEnumerator(y.Slice(sliceLengths));
+                TensorSpan_TestEnumerator(destination);
+                TensorSpan_TestEnumerator(results);
 
                 Assert.Equal(tensorLengths, results.Lengths);
 
@@ -514,11 +546,15 @@ namespace System.Numerics.Tensors.Tests
                 T results = tensorOperation(x, y);
 
                 Assert.Equal(expectedOutput, results);
+                TensorSpan_TestEnumerator(x);
+                TensorSpan_TestEnumerator(y);
 
                 // Now test if the first source is sliced to be non contiguous that it still gives expected result.
                 NRange[] sliceLengths = Helpers.TensorSliceShapesForBroadcast[index].Select(i => new NRange(0, i)).ToArray();
                 TensorSpan<T> broadcastX = Tensor.Create<T>(broadcastData1, tensorLength, []);
+                TensorSpan_TestEnumerator(broadcastX);
                 x.Slice(sliceLengths).BroadcastTo(broadcastX);
+                TensorSpan_TestEnumerator(broadcastX);
                 TensorSpan<T>.Enumerator enumerator = broadcastX.GetEnumerator();
                 bool cont = enumerator.MoveNext();
                 int i = 0;
@@ -536,7 +572,9 @@ namespace System.Numerics.Tensors.Tests
                 // Now test if the second source is sliced to be non contiguous that it still gives expected result.
 
                 TensorSpan<T> broadcastY = Tensor.Create<T>(broadcastData2, tensorLength, []);
+                TensorSpan_TestEnumerator(broadcastY);
                 y.Slice(sliceLengths).BroadcastTo(broadcastY);
+                TensorSpan_TestEnumerator(broadcastY);
 
                 enumerator = broadcastY.GetEnumerator();
                 cont = enumerator.MoveNext();
@@ -565,6 +603,9 @@ namespace System.Numerics.Tensors.Tests
                 var ab = new TensorSpan<double>(array: [0d, 1, 2, 3, 0d, 1, 2, 3]);  // [0, 1, 2, 3]
                 var b = ab.Reshape(lengths: new IntPtr[] { 2, 2, 2 });  // [[0, 1], [2, 3]]
                 var c = b.Slice(ranges: new NRange[] { 1.., 1..2, ..1 });  // [[0], [2]]
+                TensorSpan_TestEnumerator(ab);
+                TensorSpan_TestEnumerator(b);
+                TensorSpan_TestEnumerator(c);
                 c.Reshape(lengths: new IntPtr[] { 1, 2, 1 });
             });
 
@@ -573,18 +614,21 @@ namespace System.Numerics.Tensors.Tests
             {
                 var ar = new double[1];
                 var a = new TensorSpan<double>(ar.AsSpan()[..1], new IntPtr[] { 2 }, new IntPtr[] { 0 });
+                TensorSpan_TestEnumerator(a);
                 a.SetSlice(new TensorSpan<double>(new double[] { 1, 3 }), new NRange[] { ..2 });
             });
 
             // Make sure that slice range and the values are the same length
             var ar = new double[4];
             var a = new TensorSpan<double>(ar, new IntPtr[] { 2, 2 }, default);
+            TensorSpan_TestEnumerator(a);
 
             a.SetSlice(new TensorSpan<double>(new double[] { 1, 3 }), new NRange[] { ..1, .. });
             Assert.Equal(1, a[0, 0]);
             Assert.Equal(3, a[0, 1]);
             Assert.Equal(0, a[1, 0]);
             Assert.Equal(0, a[1, 1]);
+            TensorSpan_TestEnumerator(a);
 
             // Make sure we can use a stride of 0.
             a.SetSlice(new TensorSpan<double>(new double[] { -1 }, [2], [0]), new NRange[] { 1.., .. });
@@ -592,6 +636,7 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal(3, a[0, 1]);
             Assert.Equal(-1, a[1, 0]);
             Assert.Equal(-1, a[1, 1]);
+            TensorSpan_TestEnumerator(a);
 
             // Make sure we can use a multi dimensional span with multiple 0 strides
             a.SetSlice(new TensorSpan<double>(new double[] { -10 }, [2, 2], [0, 0]));
@@ -599,6 +644,7 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal(-10, a[0, 1]);
             Assert.Equal(-10, a[1, 0]);
             Assert.Equal(-10, a[1, 1]);
+            TensorSpan_TestEnumerator(a);
 
             // Make sure if the slice is broadcastable to the correct size you don't need to set a size for SetSlice
             a.SetSlice(new TensorSpan<double>(new double[] { -20 }, [1], [0]));
@@ -606,6 +652,7 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal(-20, a[0, 1]);
             Assert.Equal(-20, a[1, 0]);
             Assert.Equal(-20, a[1, 1]);
+            TensorSpan_TestEnumerator(a);
 
             //Assert.Throws
         }
@@ -1213,8 +1260,8 @@ namespace System.Numerics.Tensors.Tests
                 Assert.Equal(92, spanInt[1]);
                 Assert.Equal(-93, spanInt[2]);
                 Assert.Equal(94, spanInt[3]);
-                TensorSpan_TestEnumerator(spanInt);
             }
+            TensorSpan_TestEnumerator(spanInt);
 
             // Make sure empty span works
             // Should be a Tensor with 0 elements but Rank 1 with dimension 0 length 0
@@ -1747,8 +1794,6 @@ namespace System.Numerics.Tensors.Tests
             //Make sure its a copy
             leftSpan[0, 0] = 100;
             Assert.NotEqual(leftSpan[0, 0], rightSpan[0, 0]);
-            TensorSpan_TestEnumerator(leftSpan);
-            TensorSpan_TestEnumerator(rightSpan);
 
             // Can't copy if data is not same shape or broadcastable to.
             Assert.Throws<ArgumentException>(() =>
@@ -1757,10 +1802,11 @@ namespace System.Numerics.Tensors.Tests
                     rightData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
                     TensorSpan<int> leftSpan = leftData.AsTensorSpan(9);
                     TensorSpan<int> tensor = rightData.AsTensorSpan(rightData.Length);
+                    TensorSpan_TestEnumerator(leftSpan);
+                    TensorSpan_TestEnumerator(tensor);
                     leftSpan.CopyTo(tensor);
                 }
             );
-
             TensorSpan_TestEnumerator(leftSpan);
             TensorSpan_TestEnumerator(rightSpan);
 
@@ -1774,8 +1820,6 @@ namespace System.Numerics.Tensors.Tests
             {
                 Assert.Equal(leftEnum.Current, rightEnum.Current);
             }
-            TensorSpan_TestEnumerator(leftSpan);
-            TensorSpan_TestEnumerator(rightSpan);
 
             Assert.Throws<ArgumentException>(() =>
             {
@@ -1785,6 +1829,8 @@ namespace System.Numerics.Tensors.Tests
                 TensorSpan_TestEnumerator(r);
                 l.CopyTo(r);
             });
+            TensorSpan_TestEnumerator(leftSpan);
+            TensorSpan_TestEnumerator(rightSpan);
         }
 
         [Fact]
@@ -1841,7 +1887,8 @@ namespace System.Numerics.Tensors.Tests
             TensorSpan_TestEnumerator(r);
 
             success = new TensorSpan<double>(new double[1]).TryCopyTo(Array.Empty<double>());
-            Assert.False(success);        }
+            Assert.False(success);
+        }
 
         [Fact]
         public static void TensorSpan_SliceTest()
@@ -1851,6 +1898,7 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal([0], emptyTensorSpan.Lengths);
             Assert.Equal(1, emptyTensorSpan.Rank);
             Assert.Equal(0, emptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
 
             // Make sure slicing a multi-dimensional empty TensorSpan works
             int[,] empty2dArray = new int[2, 0];
@@ -1859,11 +1907,14 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal([2, 0], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(2, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             slicedEmptyTensorSpan = emptyTensorSpan.Slice(new NRange[] { 0..1, .. });
             Assert.Equal([1, 0], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(2, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             // Make sure slicing a multi-dimensional empty TensorSpan works
             int[,,,] empty4dArray = new int[2, 5, 1, 0];
@@ -1872,18 +1923,24 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal([2, 5, 1, 0], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(4, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             emptyTensorSpan = new TensorSpan<int>(empty4dArray);
             slicedEmptyTensorSpan = emptyTensorSpan.Slice(new NRange[] { 0..1, .., .., .. });
             Assert.Equal([1, 5, 1, 0], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(4, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             emptyTensorSpan = new TensorSpan<int>(empty4dArray);
             slicedEmptyTensorSpan = emptyTensorSpan.Slice(new NRange[] { 0..1, 2..3, .., .. });
             Assert.Equal([1, 1, 1, 0], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(4, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             empty4dArray = new int[2, 0, 1, 5];
             emptyTensorSpan = new TensorSpan<int>(empty4dArray);
@@ -1891,6 +1948,8 @@ namespace System.Numerics.Tensors.Tests
             Assert.Equal([2, 0, 1, 5], slicedEmptyTensorSpan.Lengths);
             Assert.Equal(4, slicedEmptyTensorSpan.Rank);
             Assert.Equal(0, slicedEmptyTensorSpan.FlattenedLength);
+            TensorSpan_TestEnumerator(emptyTensorSpan);
+            TensorSpan_TestEnumerator(slicedEmptyTensorSpan);
 
             int[] a = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             int[] results = new int[9];
@@ -2053,7 +2112,7 @@ namespace System.Numerics.Tensors.Tests
         }
 
         private static void TensorSpan_TestEnumerator<T>(TensorSpan<T> span)
-            where T : INumber<T>
+            where T : INumberBase<T>
         {
             Span<nint> curIndexes = new nint[span.Rank];
             if (span.Rank > 0)
