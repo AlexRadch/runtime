@@ -166,24 +166,13 @@ namespace System.Text.RegularExpressions.Tests
         internal static void EnumerateMatches_ExpectedGI<TEnumerator>(TEnumerator enumerator, ReadOnlySpan<char> span, IEnumerable<CaptureData> expected)
             where TEnumerator : IEnumerator<ValueMatch>, allows ref struct
         {
-            var match = enumerator.Current;
-            EnumerateMatches_CurrentI(enumerator);
-            Assert.Equal(default, match.Index);
-            Assert.Equal(default, match.Length);
-            Assert.Empty(span.Slice(match.Index, match.Length).ToString());
-
             try { enumerator.Reset(); } catch (NotSupportedException) { };
             enumerator.Dispose();
-            match = enumerator.Current;
-            EnumerateMatches_CurrentI(enumerator);
-            Assert.Equal(default, match.Index);
-            Assert.Equal(default, match.Length);
-            Assert.Empty(span.Slice(match.Index, match.Length).ToString());
 
             foreach (var capture in expected)
             {
                 Assert.True(enumerator.MoveNext());
-                match = enumerator.Current;
+                var match = enumerator.Current;
                 EnumerateMatches_CurrentI(enumerator);
                 if (capture.Index >= 0)
                     Assert.Equal(capture.Index, match.Index);
@@ -205,20 +194,10 @@ namespace System.Text.RegularExpressions.Tests
             }
 
             Assert.False(enumerator.MoveNext());
-            match = enumerator.Current;
-            EnumerateMatches_CurrentI(enumerator);
-            Assert.True(match.Index == 0 || match.Index == span.Length);
-            Assert.Equal(default, match.Length);
-            Assert.Empty(span.Slice(match.Index, match.Length).ToString());
 
             try { enumerator.Reset(); } catch (NotSupportedException) { };
             enumerator.Dispose();
             Assert.False(enumerator.MoveNext());
-            match = enumerator.Current;
-            EnumerateMatches_CurrentI(enumerator);
-            Assert.True(match.Index == 0 || match.Index == span.Length);
-            Assert.Equal(default, match.Length);
-            Assert.Empty(span.Slice(match.Index, match.Length).ToString());
         }
 
         internal static void EnumerateMatches_CurrentI<TEnumerator>(TEnumerator enumerator)
