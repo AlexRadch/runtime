@@ -5,7 +5,6 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Xunit;
 
@@ -1954,11 +1953,11 @@ namespace System.Numerics.Tensors.Tests
             int[] a = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             int[] results = new int[9];
             TensorSpan<int> spanInt = a.AsTensorSpan(3, 3);
-            TensorSpan_TestEnumerator(spanInt);
 
             Assert.Throws<IndexOutOfRangeException>(() => a.AsTensorSpan(2, 3).Slice(0..1));
             Assert.Throws<IndexOutOfRangeException>(() => a.AsTensorSpan(2, 3).Slice(1..2));
             Assert.Throws<ArgumentOutOfRangeException>(() => a.AsTensorSpan(2, 3).Slice(0..1, 5..6));
+            TensorSpan_TestEnumerator(spanInt);
 
             var sp = spanInt.Slice(1..3, 1..3);
             Assert.Equal(5, sp[0, 0]);
@@ -2124,10 +2123,11 @@ namespace System.Numerics.Tensors.Tests
                 Assert.True(enumerator.MoveNext());
                 ref var current = ref enumerator.Current;
 
+                var value = current;
                 Assert.Equal(span[curIndexes], current);
                 current++;
                 Assert.Equal(span[curIndexes], current);
-                current--;
+                current = value;
                 Assert.Equal(span[curIndexes], current);
             }
             Assert.False(enumerator.MoveNext());

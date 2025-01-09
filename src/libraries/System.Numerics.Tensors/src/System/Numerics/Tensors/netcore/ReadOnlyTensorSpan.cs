@@ -714,7 +714,7 @@ namespace System.Numerics.Tensors
         public ReadOnlyTensorSpan<T> Slice(params scoped ReadOnlySpan<NRange> ranges)
         {
             if (ranges.Length != Lengths.Length)
-                throw new ArgumentOutOfRangeException(nameof(ranges), "Number of dimensions to slice does not equal the number of dimensions in the span");
+                ThrowHelper.ThrowIndexOutOfRangeException();
 
             ReadOnlyTensorSpan<T> toReturn;
             scoped Span<nint> lengths;
