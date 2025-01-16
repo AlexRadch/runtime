@@ -15,10 +15,15 @@ namespace System
         /// <summary>
         /// Indicates whether the specified span contains only white-space characters.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsWhiteSpace(this ReadOnlySpan<char> span) =>
-            !SearchValues.WhiteSpaces.ContainsAnyExcept(span);
-
+        public static bool IsWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (!char.IsWhiteSpace(span[i]))
+                    return false;
+            }
+            return true;
+        }
         /// <summary>
         /// Returns a value indicating whether the specified <paramref name="value"/> occurs within the <paramref name="span"/>.
         /// </summary>
@@ -36,9 +41,15 @@ namespace System
         /// <see langword="false"/>.
         /// </summary>
         /// <param name="span">The source span.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool ContainsAnyWhiteSpace(this ReadOnlySpan<char> span) =>
-            SearchValues.WhiteSpaces.ContainsAny(span);
+        public static bool ContainsAnyWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (char.IsWhiteSpace(span[i]))
+                    return true;
+            }
+            return false;
+        }
 
         /// <summary>
         /// Determines whether this <paramref name="span"/> and the specified <paramref name="other"/> span have the same characters
@@ -159,18 +170,30 @@ namespace System
         /// characters</see> in the current <paramref name="span"/>, or -1 if not founded.
         /// </summary>
         /// <param name="span">The source span.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int IndexOfAnyWhiteSpace(this ReadOnlySpan<char> span) =>
-            SearchValues.WhiteSpaces.IndexOfAny(span);
+        public static int IndexOfAnyWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (char.IsWhiteSpace(span[i]))
+                    return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// Reports the zero-based index of the first occurrence of <see cref="char.IsWhiteSpace(char)">any
         /// non-white-space characters</see> in the current <paramref name="span"/>, or -1 if not founded.
         /// </summary>
         /// <param name="span">The source span.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int IndexOfAnyExceptWhiteSpace(this ReadOnlySpan<char> span) =>
-            SearchValues.WhiteSpaces.IndexOfAnyExcept(span);
+        public static int IndexOfAnyExceptWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (!char.IsWhiteSpace(span[i]))
+                    return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// Reports the zero-based index of the last occurrence of the specified <paramref name="value"/> in the current <paramref name="span"/>.
@@ -179,51 +202,63 @@ namespace System
         /// <param name="value">The value to seek within the source span.</param>
         /// <param name="comparisonType">One of the enumeration values that determines how the <paramref name="span"/> and <paramref name="value"/> are compared.</param>
         public static int LastIndexOf(this ReadOnlySpan<char> span, ReadOnlySpan<char> value, StringComparison comparisonType)
-        {
-            string.CheckStringComparison(comparisonType);
+                {
+                    string.CheckStringComparison(comparisonType);
 
-            if (comparisonType == StringComparison.Ordinal)
-            {
-                return SpanHelpers.LastIndexOf(
-                    ref MemoryMarshal.GetReference(span),
-                    span.Length,
-                    ref MemoryMarshal.GetReference(value),
-                    value.Length);
-            }
+                    if (comparisonType == StringComparison.Ordinal)
+                    {
+                        return SpanHelpers.LastIndexOf(
+                            ref MemoryMarshal.GetReference(span),
+                            span.Length,
+                            ref MemoryMarshal.GetReference(value),
+                            value.Length);
+                    }
 
-            switch (comparisonType)
-            {
-                case StringComparison.CurrentCulture:
-                case StringComparison.CurrentCultureIgnoreCase:
-                    return CultureInfo.CurrentCulture.CompareInfo.LastIndexOf(span, value, string.GetCaseCompareOfComparisonCulture(comparisonType));
+                    switch (comparisonType)
+                    {
+                        case StringComparison.CurrentCulture:
+                        case StringComparison.CurrentCultureIgnoreCase:
+                            return CultureInfo.CurrentCulture.CompareInfo.LastIndexOf(span, value, string.GetCaseCompareOfComparisonCulture(comparisonType));
 
-                case StringComparison.InvariantCulture:
-                case StringComparison.InvariantCultureIgnoreCase:
-                    return CompareInfo.Invariant.LastIndexOf(span, value, string.GetCaseCompareOfComparisonCulture(comparisonType));
+                        case StringComparison.InvariantCulture:
+                        case StringComparison.InvariantCultureIgnoreCase:
+                            return CompareInfo.Invariant.LastIndexOf(span, value, string.GetCaseCompareOfComparisonCulture(comparisonType));
 
-                default:
-                    Debug.Assert(comparisonType == StringComparison.OrdinalIgnoreCase);
-                    return Ordinal.LastIndexOfOrdinalIgnoreCase(span, value);
-            }
-        }
+                        default:
+                            Debug.Assert(comparisonType == StringComparison.OrdinalIgnoreCase);
+                            return Ordinal.LastIndexOfOrdinalIgnoreCase(span, value);
+                    }
+                }
 
         /// <summary>
         /// Reports the zero-based index of the last occurrence of <see cref="char.IsWhiteSpace(char)">any white-space
         /// characters</see> in the current <paramref name="span"/>, or -1 if not founded.
         /// </summary>
         /// <param name="span">The source span.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int LastIndexOfAnyWhiteSpace(this ReadOnlySpan<char> span) =>
-            SearchValues.WhiteSpaces.LastIndexOfAny(span);
+        public static int LastIndexOfAnyWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = span.Length - 1; i >= 0; i--)
+            {
+                if (char.IsWhiteSpace(span[i]))
+                    return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// Reports the zero-based index of the last occurrence of <see cref="char.IsWhiteSpace(char)">any
         /// non-white-space characters</see> in the current <paramref name="span"/>, or -1 if not founded.
         /// </summary>
         /// <param name="span">The source span.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int LastIndexOfAnyExceptWhiteSpace(this ReadOnlySpan<char> span) =>
-            SearchValues.WhiteSpaces.LastIndexOfAnyExcept(span);
+        public static int LastIndexOfAnyExceptWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            for (int i = span.Length - 1; i >= 0; i--)
+            {
+                if (!char.IsWhiteSpace(span[i]))
+                    return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// Copies the characters from the source span into the destination, converting each character to lowercase,
